@@ -1,0 +1,5 @@
+row_id,timestamp,account,debit_minor,credit_minor,currency,entity_id,invoice_id,payment_id
+R-8k2m1q,2026-03-02T10:00:00+05:00,1200,100000,0,KZT,E-19ad,INV-1042,
+R-c3z8aa,2026-03-02T10:00:00+05:00,4000,0,100000,KZT,E-19ad,INV-1042,
+R-4p8x1t,2026-03-03T11:00:00+05:00,1010,100000,0,KZT,E-19ad,,P-3x7a
+R-d8y1bb,2026-03-03T11:00:00+05:00,1200,0,100000,KZT,E-19ad,INV-1042,P-3x7a

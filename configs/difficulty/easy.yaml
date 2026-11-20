@@ -1,0 +1,13 @@
+config_version: "easy-1.0"
+period: {start: "2026-03-01", end: "2026-03-31"}
+n_entities: [5, 10]
+n_invoices: [30, 60]
+n_ledger_target: [200, 450]
+n_issues: [0, 3]
+clean_probability: 0.2
+enabled_types: [duplicate_invoice, payment_misallocation, fx_rate_error, cutoff_error]
+interactions: {fx_partial_boundary: 0, duplicate_with_payment: 0}
+distractor_rate: 0.1
+currencies: [KZT, USD]
+foreign_share: 0.2
+tz_spread: 0.2

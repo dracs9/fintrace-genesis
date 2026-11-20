@@ -1,0 +1,1 @@
+{"currency":"KZT","doc_id":"D-7q2x9a","due_at":"2026-03-16T23:59:59+05:00","entity_id":"E-19ad","invoice_id":"INV-1042","issued_at":"2026-03-02T10:00:00+05:00","kind":"invoice","line_items":[{"description":"Услуги за месяц","quantity":1,"service_period":"2026-03","unit_price_minor":100000}],"original_invoice_id":null,"total_minor":100000}

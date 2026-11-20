@@ -1,0 +1,13 @@
+config_version: "medium-1.0"
+period: {start: "2026-03-01", end: "2026-03-31"}
+n_entities: [10, 25]
+n_invoices: [40, 120]
+n_ledger_target: [400, 1500]
+n_issues: [0, 8]
+clean_probability: 0.2
+enabled_types: [duplicate_invoice, payment_misallocation, fx_rate_error, cutoff_error]
+interactions: {fx_partial_boundary: 0.3, duplicate_with_payment: 0.3}
+distractor_rate: 0.25
+currencies: [KZT, USD, EUR, JPY, KWD]
+foreign_share: 0.4
+tz_spread: 0.6

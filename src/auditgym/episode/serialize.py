@@ -1,4 +1,4 @@
-"""Step 0 integration fixture for the on-disk AuditGym episode contract."""
+"""Serialize generated AuditGym books and the original on-disk integration fixture."""
 
 import calendar
 import csv
@@ -8,9 +8,18 @@ import json
 import os
 from datetime import date, timedelta
 from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Iterable, Sequence
+
+from numpy.random import Generator
+
+from ..common.rng import Streams
+from ..injectors.base import COMPANY_TZ, handle, key, row_handle
+from ..injectors.distractors import prepare
+from ..injectors.interactions import inject
+from ..world import build
 
 
 _GENERATOR_VERSION = "0.1.1"
@@ -103,7 +112,7 @@ def _fixture_tables(
     }, {"ledger": len(ledger), "invoices": 1, "payments": 1, "fx": len(fx)}
 
 
-def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
+def generate_fixture(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
     """Write a deterministic §4 fixture to out_dir/{open,private} and return out_dir.
 
     In step 0 every preset yields the same balanced KZT sale and partial settlement.
@@ -141,6 +150,10 @@ def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
     files["private/truth.json"] = _json_bytes({"episode_id": episode_id, "issues": []})
     files["private/provenance.json"] = _json_bytes(provenance)
 
+    return _publish(files, out_dir)
+
+
+def _publish(files: dict[str, bytes], out_dir: Path) -> Path:
     # Publish a new episode in one rename, after both visibility domains exist.
     out_dir.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(dir=out_dir.parent.resolve()) as staging:
@@ -162,3 +175,122 @@ def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
             if any((out_dir / name).read_bytes() != files[name] for name in sorted(files)):
                 raise
     return out_dir
+
+
+def _ids(count: int, prefix: str, width: int, rng: Generator, *, numeric: bool = False) -> list[str]:
+    alphabet = "0123456789" if numeric else "abcdefghijklmnopqrstuvwxyz0123456789"
+    space = len(alphabet) ** width
+    if count > space:
+        raise ValueError("identifier space exhausted")
+    seen: set[int] = set()
+    result = []
+    while len(result) < count:
+        number = int(rng.integers(space))
+        if number in seen:
+            continue
+        seen.add(number)
+        digits = []
+        for _ in range(width):
+            number, digit = divmod(number, len(alphabet))
+            digits.append(alphabet[digit])
+        result.append(prefix + "".join(reversed(digits)))
+    return result
+
+
+def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
+    """Generate deterministic public records and private, ID-resolved truth and provenance."""
+    version = "0.2.0"
+    config_hash = hashlib.sha256(_json_bytes(config)).hexdigest()
+    salt = os.environ.get("AUDITGYM_SALT", "")
+    source = Streams(seed, config_hash, version, salt)
+    used: dict[str, Generator] = {}
+
+    def stream(name: str) -> Generator:
+        if name not in used:
+            used[name] = source.stream(name)
+        return used[name]
+
+    world = build(config, stream("world"))
+    chooser = stream("events")
+    chance = Fraction(str(config["clean_probability"]))
+    lo, hi = config["n_issues"]
+    if not (0 <= chance <= 1 and 0 <= lo <= hi <= 12):
+        raise ValueError("invalid issue configuration")
+    count = 0 if chooser.integers(chance.denominator) < chance.numerator else int(chooser.integers(lo, hi + 1))
+    clean, distractors = prepare(world, config, chooser, stream("distract"), n_issues=count)
+    books, mutations = inject(clean, config, count, stream, chooser)
+    invoices, payments = books.events.invoices, books.events.payments
+    docs = (*invoices, *payments)
+    ids = stream("ids")
+    doc_ids = dict(zip((handle(d) for d in docs), _ids(len(docs), "D-", 6, ids), strict=True))
+    entities = dict(zip((e.index for e in world.entities), _ids(len(world.entities), "E-", 4, ids), strict=True))
+    numbers = dict(zip((i.key for i in invoices), _ids(len(invoices), "INV-", 4, ids, numeric=True), strict=True))
+    invoice_ids = {i.key: i.number(numbers) for i in invoices}
+    payment_ids = dict(zip((p.key for p in payments), _ids(len(payments), "P-", 4, ids), strict=True))
+    invoice_by_key = {i.key: i for i in invoices}
+    sales, receipts = [], []
+    for i in invoices:
+        original = invoice_by_key[i.number_source] if i.number_source is not None else i
+        period = original.service_period or original.issued_at.astimezone(COMPANY_TZ).strftime("%Y-%m")
+        sales.append({"doc_id": doc_ids[handle(i)], "invoice_id": invoice_ids[i.key], "entity_id": entities[i.entity],
+                      "issued_at": i.issued_at.isoformat(), "due_at": i.due_at.isoformat(), "total_minor": i.total_minor,
+                      "currency": i.currency, "kind": "invoice" if i.original is None else "credit_note",
+                      "original_invoice_id": invoice_ids.get(i.original),
+                      "line_items": [{"description": "Услуги за месяц", "quantity": 1,
+                                      "unit_price_minor": i.total_minor, "service_period": period}]})
+    for p in payments:
+        receipts.append({"doc_id": doc_ids[handle(p)], "payment_id": payment_ids[p.key], "entity_id": entities[p.entity],
+                         "timestamp": p.timestamp.isoformat(), "amount_minor": p.amount_minor, "fee_minor": p.fee_minor,
+                         "currency": p.currency, "invoice_refs": [{"invoice_id": invoice_ids[r.invoice],
+                                                                  "amount_minor": r.amount_minor} for r in p.refs]})
+    lookup = {key(d): d for d in docs}
+    offsets: dict[tuple[str, int], int] = {}
+    handles = []
+    for r in books.ledger:
+        offset = offsets.get(r.document, 0)
+        handles.append(row_handle(lookup[r.document], offset))
+        offsets[r.document] = offset + 1
+    historical = set(handles)
+    for _, m in mutations:
+        historical.update(ref for ref in m.diff["removed"] if ref.startswith("ledger:"))
+    row_ids = dict(zip(sorted(historical), _ids(len(historical), "R-", 6, ids), strict=True))
+    remap = {k: "doc:" + doc_ids[k] for k in sorted(doc_ids)}
+    remap.update({k: "ledger:" + row_ids[k] for k in sorted(row_ids)})
+    ledger = [(row_ids[h], r.timestamp.isoformat(), r.account, r.debit_minor, r.credit_minor, r.currency,
+               entities[r.entity], invoice_ids.get(r.invoice), payment_ids.get(r.payment))
+              for h, r in zip(handles, books.ledger, strict=True)]
+    fx = [(q.date.isoformat(), q.source_currency, world.base_currency, str(q.rate)) for q in world.market.quotes]
+    for day, src, dst, _ in fx:
+        h = f"fx:{day}:{src}:{dst}"
+        remap[h] = h
+    shuffle = stream("shuffle")
+    for table in (sales, receipts, ledger, fx):
+        shuffle.shuffle(table)
+    ledger.sort(key=lambda row: (row[1], row[0]))
+    truth, history = [], []
+    for name, m in mutations:
+        for t in m.truth_items:
+            truth.append({"issue_id": t.issue_id, "type": t.type, "currency": t.currency,
+                          "affected_ids": sorted(remap[h] for h in t.affected_ids),
+                          "evidence_sets": [[remap[h] for h in group] for group in t.evidence_sets],
+                          "expected_amount_minor": t.expected_amount_minor})
+        history.append({"issue_ids": [t.issue_id for t in m.truth_items], "injector": name, "causal_note": m.causal_note,
+                        "decomposition": m.decomposition,
+                        "diff": {k: sorted(remap[h] for h in m.diff[k]) for k in sorted(m.diff)}})
+    episode_id = "ep_" + hashlib.sha256(f"{seed}{config_hash}{version}{salt}".encode()).hexdigest()[:12]
+    manifest = {"schema_version": "1.0", "generator_version": version, "config_version": config["config_version"],
+                "episode_id": episode_id, "base_currency": world.base_currency, "timezone": world.timezone,
+                "period_start": f"{world.start}T00:00:00{_TZ}", "period_end": f"{world.end}T23:59:59.999{_TZ}",
+                "currency_exponents": {"EUR": 2, "JPY": 0, "KWD": 3, "KZT": 2, "USD": 2},
+                "rounding": "ROUND_HALF_EVEN",
+                "counts": {"ledger": len(ledger), "invoices": len(sales), "payments": len(receipts), "fx": len(fx)}}
+    provenance = {"seed": seed, "config": config, "config_hash": config_hash, "generator_version": version,
+                  "stream_keys": sorted(used), "mutations": history,
+                  "distractors": [{"kind": d.kind, "ids": [remap[handle(lookup[k])] for k in d.documents]}
+                                  for d in distractors]}
+    return _publish({"open/manifest.json": _json_bytes(manifest), "open/policy.json": _json_bytes(_policy()),
+                     "open/fx.csv": _csv_bytes(_FX_COLUMNS, fx), "open/ledger.csv": _csv_bytes(_LEDGER_COLUMNS, ledger),
+                     "open/invoices.jsonl": b"".join(_json_bytes(i) + b"\n" for i in sales),
+                     "open/payments.jsonl": b"".join(_json_bytes(p) + b"\n" for p in receipts),
+                     "private/truth.json": _json_bytes({"episode_id": episode_id, "issues": truth}),
+                     "private/provenance.json": _json_bytes(provenance)}, out_dir)

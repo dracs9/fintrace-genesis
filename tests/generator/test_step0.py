@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import yaml
 
-from auditgym.episode.serialize import generate_episode
+from auditgym.episode.serialize import generate_fixture as generate_episode
 
 
 _CONFIGS = Path(__file__).resolve().parents[2] / "configs"

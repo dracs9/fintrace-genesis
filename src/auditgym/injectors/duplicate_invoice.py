@@ -21,11 +21,15 @@ class DuplicateInvoice:
 
     def apply(self, cand: Candidate, books: Books, rng: Generator) -> Mutation:
         """Reissue a sale with the same service and a normalized-equivalent number."""
+        return self.reissue(cand, books, rng, 10)
+
+    def reissue(self, cand: Candidate, books: Books, rng: Generator, max_days: int) -> Mutation:
+        """Reissue within the month and the supplied causal time window."""
         original = cand.document
         if not isinstance(original, Invoice):
             raise ValueError("invoice required")
         day = original.issued_at.astimezone(COMPANY_TZ).date()
-        limit = min(10, (books.world.end - day).days)
+        limit = min(10, max_days, (books.world.end - day).days)
         delay = timedelta(days=int(rng.integers(1, limit + 1)))
         style = ("compact", "lower", "zero")[int(rng.integers(3))]
         new = replace(original, key=max(i.key for i in books.events.invoices) + 1,

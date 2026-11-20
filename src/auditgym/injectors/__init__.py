@@ -35,18 +35,36 @@ def apply(plan: Sequence[str], books: Books, stream: Callable[[str], Generator],
     independent. An infeasible plan raises without modifying the input books.
     The empty plan preserves a clean episode.
     """
+    return _run(plan, books, stream, config, classes, set(), None)
+
+
+def fill(count: int, books: Books, stream: Callable[[str], Generator], *, config: Mapping[str, object],
+         reserved: set[str], chooser: Generator) -> tuple[Books, tuple[Mutation, ...]]:
+    """Fill remaining issue slots with eligible enabled types outside interaction documents."""
+    return _run([None] * count, books, stream, config, BUILTINS, reserved, chooser)
+
+
+def _run(plan: Sequence[str | None], books: Books, stream: Callable[[str], Generator],
+         config: Mapping[str, object], classes: Sequence[type[Injector]], reserved: set[str],
+         chooser: Generator | None) -> tuple[Books, tuple[Mutation, ...]]:
     plugins = registry(classes)
     enabled = config["enabled_types"]
     if not isinstance(enabled, (tuple, list)) or any(t not in plugins for t in enabled):
         raise ValueError("unknown enabled type")
-    if len(plan) > 12 or any(t not in enabled for t in plan):
+    if len(plan) > 12 or any(t not in enabled for t in plan if t is not None or chooser is None):
         raise ValueError("invalid injection plan")
     current = books
-    used: set[str] = set()
+    used = set(reserved)
     mutations = []
-    streams = {t: stream("inj." + t) for t in sorted(set(plan))}
-    pools = {t: plugins[t].eligible(books) for t in sorted(set(plan))}
+    types = sorted(set(enabled if chooser is not None and plan else plan))
+    streams = {t: stream("inj." + t) for t in types}
+    pools = {t: plugins[t].eligible(books) for t in types}
     for index, kind in enumerate(plan, 1):
+        if kind is None:
+            options = [t for t in types if any(used.isdisjoint(_dependencies(c)) for c in pools[t])]
+            if not options or chooser is None:
+                raise ValueError("insufficient independent candidates")
+            kind = options[int(chooser.integers(len(options)))]
         available = [c for c in pools[kind] if used.isdisjoint(_dependencies(c))]
         if not available:
             raise ValueError("insufficient independent candidates")

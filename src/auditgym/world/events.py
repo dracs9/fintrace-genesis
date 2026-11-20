@@ -18,6 +18,7 @@ class Invoice:
     due_at: datetime
     total_minor: int
     original: int | None = None  # Set only for a credit note.
+    service_period: str | None = None  # YYYY-MM for a billed service period.
 
 
 @dataclass(frozen=True)
@@ -44,12 +45,14 @@ class Events:
     payments: tuple[Payment, ...]
 
 
-def generate_events(world: World, n_invoices: Sequence[int], rng: Generator) -> Events:
+def generate_events(world: World, n_invoices: Sequence[int], rng: Generator, *,
+                    ordinary_only: bool = False) -> Events:
     """Generate a reproducible calendar using the caller's named events stream.
 
     The range counts sales invoices. A credit note gets its own document key.
     Each scenario owns its invoices, so independently planned receipts cannot
-    consume another scenario's receivables.
+    consume another scenario's receivables. With ordinary_only, emit full
+    settlements as the baseline for a separately budgeted distractor stage.
     """
     low, high = n_invoices
     if not 1 <= low <= high:
@@ -58,6 +61,8 @@ def generate_events(world: World, n_invoices: Sequence[int], rng: Generator) -> 
     invoices: list[Invoice] = []
     payments: list[Payment] = []
     scenarios = ("full", "partial", "split", "multi", "credit", "fee", "overpayment")
+    if ordinary_only:
+        scenarios = ("full",)
     company_zone = timezone(timedelta(hours=5))
     schedule: list[str] = []
     while remaining:

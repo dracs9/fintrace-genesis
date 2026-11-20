@@ -160,9 +160,9 @@ class StepZeroTests(unittest.TestCase):
         self.assertIs(type(invoice["total_minor"]), int)
         self.assertIs(type(payment["amount_minor"]), int)
         self.assertEqual(payment["fee_minor"], 0)
-        self.assertEqual(payment["amount_minor"], invoice["total_minor"])
+        self.assertTrue(0 < payment["amount_minor"] < invoice["total_minor"])
         self.assertEqual(payment["invoice_refs"], [
-            {"invoice_id": invoice["invoice_id"], "amount_minor": invoice["total_minor"]}
+            {"invoice_id": invoice["invoice_id"], "amount_minor": payment["amount_minor"]}
         ])
         line_total = sum(i["quantity"] * i["unit_price_minor"] for i in invoice["line_items"])
         self.assertEqual(line_total, invoice["total_minor"])
@@ -178,7 +178,8 @@ class StepZeroTests(unittest.TestCase):
         amount, inv, pay = invoice["total_minor"], invoice["invoice_id"], payment["payment_id"]
         self.assertCountEqual(postings, [
             ("1200", amount, 0, inv, "", invoice["issued_at"]), ("4000", 0, amount, inv, "", invoice["issued_at"]),
-            ("1010", amount, 0, "", pay, payment["timestamp"]), ("1200", 0, amount, inv, pay, payment["timestamp"]),
+            ("1010", payment["amount_minor"], 0, "", pay, payment["timestamp"]),
+            ("1200", 0, payment["amount_minor"], inv, pay, payment["timestamp"]),
         ])
     def test_private_contract(self) -> None:
         episode = generate_episode(42, self.config, self.root / "grader")
@@ -195,7 +196,8 @@ class StepZeroTests(unittest.TestCase):
         self.assertEqual(provenance["config"], self.config)
         self.assertEqual(provenance["generator_version"], manifest["generator_version"])
         self.assertEqual(provenance["mutations"], [])
-        self.assertEqual(provenance["distractors"], [])
+        docs = [_read_json(episode / "open" / name)["doc_id"] for name in ("invoices.jsonl", "payments.jsonl")]
+        self.assertEqual(provenance["distractors"], [{"kind": "partial_open", "ids": ["doc:" + d for d in docs]}])
         self.assertEqual(provenance["stream_keys"], [])
 
     def test_example_for_team_matches_generator(self) -> None:

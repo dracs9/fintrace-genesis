@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Iterable, Sequence
 
 
-_GENERATOR_VERSION = "0.1.0"
+_GENERATOR_VERSION = "0.1.1"
 _TZ = "+05:00"
 _LEDGER_COLUMNS = (
     "row_id", "timestamp", "account", "debit_minor", "credit_minor",
@@ -66,6 +66,7 @@ def _fixture_tables(
     paid_at = f"{issued + timedelta(days=1)}T11:00:00{_TZ}"
     entity_id, invoice_id, payment_id = "E-19ad", "INV-1042", "P-3x7a"
     amount = 100_000
+    paid = amount // 2
     invoice = {
         "doc_id": "D-7q2x9a", "invoice_id": invoice_id, "entity_id": entity_id,
         "issued_at": issued_at, "due_at": f"{issued + timedelta(days=14)}T23:59:59{_TZ}",
@@ -78,14 +79,14 @@ def _fixture_tables(
     }
     payment = {
         "doc_id": "D-k1p0zz", "payment_id": payment_id, "entity_id": entity_id,
-        "timestamp": paid_at, "currency": "KZT", "amount_minor": amount, "fee_minor": 0,
-        "invoice_refs": [{"invoice_id": invoice_id, "amount_minor": amount}],
+        "timestamp": paid_at, "currency": "KZT", "amount_minor": paid, "fee_minor": 0,
+        "invoice_refs": [{"invoice_id": invoice_id, "amount_minor": paid}],
     }
     ledger = [
         ("R-8k2m1q", issued_at, "1200", amount, 0, "KZT", entity_id, invoice_id, None),
         ("R-c3z8aa", issued_at, "4000", 0, amount, "KZT", entity_id, invoice_id, None),
-        ("R-4p8x1t", paid_at, "1010", amount, 0, "KZT", entity_id, None, payment_id),
-        ("R-d8y1bb", paid_at, "1200", 0, amount, "KZT", entity_id, invoice_id, payment_id),
+        ("R-4p8x1t", paid_at, "1010", paid, 0, "KZT", entity_id, None, payment_id),
+        ("R-d8y1bb", paid_at, "1200", 0, paid, "KZT", entity_id, invoice_id, payment_id),
     ]
     quotes = {
         "USD": "500.000000", "EUR": "545.000000", "JPY": "3.400000", "KWD": "1630.000000",
@@ -105,7 +106,7 @@ def _fixture_tables(
 def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
     """Write a deterministic §4 fixture to out_dir/{open,private} and return out_dir.
 
-    In step 0 every preset yields the same balanced KZT sale and settlement.
+    In step 0 every preset yields the same balanced KZT sale and partial settlement.
     The calendar month and currencies follow the config. The episode identity
     includes the seed, canonical config digest, generator version and audit salt.
     No random streams or currency conversions are needed for these fixed records.
@@ -131,7 +132,8 @@ def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
     provenance = {
         "seed": seed, "config": config, "config_hash": config_hash,
         "generator_version": _GENERATOR_VERSION, "stream_keys": [],
-        "mutations": [], "distractors": [],
+        "mutations": [],
+        "distractors": [{"kind": "partial_open", "ids": ["doc:D-7q2x9a", "doc:D-k1p0zz"]}],
     }
     files = {f"open/{name}": tables[name] for name in sorted(tables)}
     files["open/policy.json"] = _json_bytes(_policy())

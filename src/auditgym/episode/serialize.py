@@ -15,10 +15,12 @@ from typing import Any, Iterable, Sequence
 
 from numpy.random import Generator
 
+from ..books import Books, Row
+from ..books.discrepancies import verify, verify_deltas
 from ..common.rng import Streams
 from ..injectors.base import COMPANY_TZ, handle, key, row_handle
 from ..injectors.distractors import prepare
-from ..injectors.interactions import inject
+from ..injectors.interactions import inject_with_baseline
 from ..world import build
 
 
@@ -199,7 +201,7 @@ def _ids(count: int, prefix: str, width: int, rng: Generator, *, numeric: bool =
 
 def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
     """Generate deterministic public records and private, ID-resolved truth and provenance."""
-    version = "0.2.0"
+    version = "1.0.0"
     config_hash = hashlib.sha256(_json_bytes(config)).hexdigest()
     salt = os.environ.get("AUDITGYM_SALT", "")
     source = Streams(seed, config_hash, version, salt)
@@ -217,9 +219,14 @@ def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
     if not (0 <= chance <= 1 and 0 <= lo <= hi <= 12):
         raise ValueError("invalid issue configuration")
     count = 0 if chooser.integers(chance.denominator) < chance.numerator else int(chooser.integers(lo, hi + 1))
-    clean, distractors = prepare(world, config, chooser, stream("distract"), n_issues=count)
-    books, mutations = inject(clean, config, count, stream, chooser)
+    # One slot per issue also covers the two clean prerequisites of the paired FX case.
+    clean, distractors = prepare(world, config, chooser, stream("distract"), n_issues=count,
+                                 document_limit=200 - count)
+    baseline, books, mutations = inject_with_baseline(clean, config, count, stream, chooser)
+    verify_deltas(baseline, books, [t for _, mutation in mutations for t in mutation.truth_items])
     invoices, payments = books.events.invoices, books.events.payments
+    if not (20 <= len(invoices) + len(payments) <= 200 and 200 <= len(books.ledger) <= 2000):
+        raise ValueError("generated episode size outside specification")
     docs = (*invoices, *payments)
     ids = stream("ids")
     doc_ids = dict(zip((handle(d) for d in docs), _ids(len(docs), "D-", 6, ids), strict=True))
@@ -244,21 +251,32 @@ def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
                          "currency": p.currency, "invoice_refs": [{"invoice_id": invoice_ids[r.invoice],
                                                                   "amount_minor": r.amount_minor} for r in p.refs]})
     lookup = {key(d): d for d in docs}
-    offsets: dict[tuple[str, int], int] = {}
-    handles = []
-    for r in books.ledger:
-        offset = offsets.get(r.document, 0)
-        handles.append(row_handle(lookup[r.document], offset))
-        offsets[r.document] = offset + 1
-    historical = set(handles)
-    for _, m in mutations:
-        historical.update(ref for ref in m.diff["removed"] if ref.startswith("ledger:"))
+    def indexed(book: Books) -> dict[str, Row]:
+        offsets: dict[tuple[str, int], int] = {}
+        result = {}
+        for row in book.ledger:
+            index = offsets.get(row.document, 0)
+            result[row_handle(lookup[row.document], index)] = row
+            offsets[row.document] = index + 1
+        return result
+
+    before, after = indexed(baseline), indexed(books)
+    historical = before.keys() | after.keys()
+    actual = {"added": after.keys() - before.keys(), "removed": before.keys() - after.keys(),
+              "modified": {h for h in sorted(before.keys() & after.keys()) if before[h] != after[h]}}
+    actual["added"].update(handle(d) for d in invoices if d.number_source is not None)
+    for action in sorted(actual):
+        declared = [ref for _, m in mutations for ref in m.diff[action]]
+        if len(declared) != len(actual[action]) or set(declared) != actual[action]:
+            raise ValueError("mutation diff does not match the clean book")
     row_ids = dict(zip(sorted(historical), _ids(len(historical), "R-", 6, ids), strict=True))
     remap = {k: "doc:" + doc_ids[k] for k in sorted(doc_ids)}
     remap.update({k: "ledger:" + row_ids[k] for k in sorted(row_ids)})
-    ledger = [(row_ids[h], r.timestamp.isoformat(), r.account, r.debit_minor, r.credit_minor, r.currency,
-               entities[r.entity], invoice_ids.get(r.invoice), payment_ids.get(r.payment))
-              for h, r in zip(handles, books.ledger, strict=True)]
+    def public_row(h: str, r: Row) -> tuple:
+        return (row_ids[h], r.timestamp.isoformat(), r.account, r.debit_minor, r.credit_minor, r.currency,
+                entities[r.entity], invoice_ids.get(r.invoice), payment_ids.get(r.payment))
+
+    ledger = [public_row(h, after[h]) for h in sorted(after)]
     fx = [(q.date.isoformat(), q.source_currency, world.base_currency, str(q.rate)) for q in world.market.quotes]
     for day, src, dst, _ in fx:
         h = f"fx:{day}:{src}:{dst}"
@@ -276,7 +294,10 @@ def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
                           "expected_amount_minor": t.expected_amount_minor})
         history.append({"issue_ids": [t.issue_id for t in m.truth_items], "injector": name, "causal_note": m.causal_note,
                         "decomposition": m.decomposition,
-                        "diff": {k: sorted(remap[h] for h in m.diff[k]) for k in sorted(m.diff)}})
+                        "diff": {**{k: sorted(remap[h] for h in m.diff[k]) for k in sorted(m.diff)},
+                                 "before": {remap[h]: dict(zip(_LEDGER_COLUMNS, public_row(h, before[h]), strict=True))
+                                            for h in sorted(m.diff["modified"] + m.diff["removed"])}}})
+    verify(truth, sales + receipts, ledger, fx, world.end.isoformat())
     episode_id = "ep_" + hashlib.sha256(f"{seed}{config_hash}{version}{salt}".encode()).hexdigest()[:12]
     manifest = {"schema_version": "1.0", "generator_version": version, "config_version": config["config_version"],
                 "episode_id": episode_id, "base_currency": world.base_currency, "timezone": world.timezone,

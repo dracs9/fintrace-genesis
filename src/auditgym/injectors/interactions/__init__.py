@@ -17,6 +17,13 @@ from . import duplicate_with_payment, fx_partial_boundary
 def inject(books: Books, config: dict[str, Any], n_issues: int, stream: Callable[[str], Generator],
            chooser: Generator) -> tuple[Books, tuple[tuple[str, Mutation], ...]]:
     """Sample only enabled pairs with room in the budget; fill unused slots with basic issues."""
+    _, final, mutations = inject_with_baseline(books, config, n_issues, stream, chooser)
+    return final, mutations
+
+
+def inject_with_baseline(books: Books, config: dict[str, Any], n_issues: int, stream: Callable[[str], Generator],
+                         chooser: Generator) -> tuple[Books, Books, tuple[tuple[str, Mutation], ...]]:
+    """Retain the checked clean book, including any prerequisites staged for a pair."""
     if not 0 <= n_issues <= 12:
         raise ValueError("invalid issue budget")
     staged = []
@@ -38,6 +45,7 @@ def inject(books: Books, config: dict[str, Any], n_issues: int, stream: Callable
             books, candidate = staged_case
             staged.append((name, module, candidate, rng))
             remaining -= 2
+    baseline = books
     reserved: set[str] = set()
     result = []
     for name, module, candidate, rng in staged:
@@ -57,4 +65,4 @@ def inject(books: Books, config: dict[str, Any], n_issues: int, stream: Callable
         items = tuple(replace(t, issue_id=f"iss_{i:02d}") for i, t in enumerate(mutation.truth_items, next_id))
         numbered.append((name, replace(mutation, truth_items=items)))
         next_id += len(items)
-    return books, tuple(numbered)
+    return baseline, books, tuple(numbered)

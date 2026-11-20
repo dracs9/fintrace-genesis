@@ -162,7 +162,7 @@ def _missing_cash_cases(books: Books, rng: Generator, next_key: int, existing: s
 
 
 def apply(books: Books, rng: Generator, *, distractor_rate: Fraction | str | int,
-          n_issues: int) -> tuple[Books, tuple[Distractor, ...]]:
+          n_issues: int, document_limit: int | None = None) -> tuple[Books, tuple[Distractor, ...]]:
     """Apply clean cases using stream('distract') and return checked books and provenance.
 
     Target the fraction of unique participating documents in the resulting book.
@@ -191,6 +191,11 @@ def apply(books: Books, rng: Generator, *, distractor_rate: Fraction | str | int
             options = groups[kind]
             while options:
                 case = options.pop()
+                if document_limit is not None:
+                    added = sum(i.key not in invoices for i in case.invoices)
+                    added += sum(p.key not in payments for p in case.payments)
+                    if len(invoices) + len(payments) + added > document_limit:
+                        continue
                 if any(key not in covered for key in case.record.documents):
                     for invoice in case.invoices:
                         invoices[invoice.key] = invoice
@@ -210,12 +215,37 @@ def apply(books: Books, rng: Generator, *, distractor_rate: Fraction | str | int
 
 
 def prepare(world: World, config: dict[str, Any], events_rng: Generator, distract_rng: Generator,
-            *, n_issues: int) -> tuple[Books, tuple[Distractor, ...]]:
+            *, n_issues: int, document_limit: int | None = None) -> tuple[Books, tuple[Distractor, ...]]:
     """Build the clean input to issue injection using the events and distract streams.
 
     Resolve n_issues before calling so a sampled clean episode receives a case
     even when the configured participation rate is zero.
     """
-    events = generate_events(world, config["n_invoices"], events_rng, ordinary_only=True)
+    invoice_range = config["n_invoices"]
+    if document_limit is not None:
+        low, high = invoice_range
+        target_low, target_high = config["n_ledger_target"]
+        if not 1 <= low <= high or low >= document_limit or not 1 <= target_low <= target_high:
+            raise ValueError("infeasible episode size configuration")
+        # A settled sale produces four or more lines. Reserve capacity for complete cases.
+        target = int(events_rng.integers(target_low, target_high + 1))
+        cap = min(high, document_limit - 1, max(low, (document_limit - 16) // 2), max(low, target // 4))
+        invoice_range = (max(low, min(50, cap)), cap)
+    events = generate_events(world, invoice_range, events_rng, ordinary_only=True)
+    if document_limit is not None:
+        # When many sales are requested, some remain outstanding at the end of the tail.
+        keep = max(1, document_limit - len(events.invoices) - 16)
+        if len(events.payments) > keep:
+            indices = sorted(int(i) for i in events_rng.choice(len(events.payments), keep, replace=False))
+            events = Events(events.invoices, tuple(events.payments[i] for i in indices))
+        # Small invoice ranges can still have customer advances awaiting remittance.
+        payments = list(events.payments)
+        while len(events.invoices) + len(payments) < 100:
+            sale = events.invoices[int(events_rng.integers(len(events.invoices)))]
+            amount = int(events_rng.integers(1000, 500001))
+            key = max((p.key for p in payments), default=-1) + 1
+            payments.append(Payment(key, sale.entity, sale.currency, sale.issued_at + timedelta(days=1),
+                                    amount, (), unapplied_minor=amount))
+        events = Events(events.invoices, tuple(payments))
     return apply(post(world, events), distract_rng, distractor_rate=config["distractor_rate"],
-                 n_issues=n_issues)
+                 n_issues=n_issues, document_limit=document_limit)

@@ -12,14 +12,6 @@ from auditgym.world.fx import Market, Quote
 from test_step0 import _preset
 
 
-def exact_usd(amount: int, src: str, dst: str, rate: Decimal) -> int:
-    """Test converter for integral USD/KZT fixtures. Every product is exact."""
-    assert (src, dst) == ("USD", "KZT")
-    value = amount * rate
-    assert value == int(value)
-    return int(value)
-
-
 class BookTests(unittest.TestCase):
     def setUp(self) -> None:
         issued = datetime.fromisoformat("2026-03-06T12:00:00-04:00")
@@ -31,7 +23,7 @@ class BookTests(unittest.TestCase):
         self.credit = Invoice(1, 0, "USD", paid, paid, 200, 0)
         self.payment = Payment(0, 0, "USD", paid, 810, (Allocation(0, 800),), 10, 20)
         self.events = Events((self.invoice, self.credit), (self.payment,))
-        self.books = post(self.world, self.events, exact_usd)
+        self.books = post(self.world, self.events)
 
     def test_exact_postings_historical_ar_and_net_cash(self) -> None:
         actual = [(r.account, r.debit_minor, r.credit_minor) for r in self.books.ledger]
@@ -42,7 +34,7 @@ class BookTests(unittest.TestCase):
         ])
         quotes = self.world.market.quotes
         market = replace(self.world.market, quotes=(quotes[0], replace(quotes[1], rate=Decimal("490.000000"))))
-        loss = post(replace(self.world, market=market), self.events, exact_usd)
+        loss = post(replace(self.world, market=market), self.events)
         self.assertEqual([r.debit_minor for r in loss.ledger if r.account == "7100"], [8000])
 
     def test_all_invariants_reject_corruption(self) -> None:
@@ -58,13 +50,24 @@ class BookTests(unittest.TestCase):
             for index in sorted(edits):
                 changed[index] = edits[index]
             with self.subTest(label=label), self.assertRaisesRegex(ValueError, label):
-                check_invariants(replace(self.books, ledger=tuple(changed)), exact_usd)
+                check_invariants(replace(self.books, ledger=tuple(changed)))
         with self.assertRaisesRegex(ValueError, "I4"):
-            post(self.world, replace(self.events, payments=(replace(self.payment, amount_minor=830),)), exact_usd)
+            post(self.world, replace(self.events, payments=(replace(self.payment, amount_minor=830),)))
         with self.assertRaisesRegex(ValueError, "I7"):
-            post(replace(self.world, market=replace(self.world.market, quotes=())), self.events, exact_usd)
+            post(replace(self.world, market=replace(self.world.market, quotes=())), self.events)
         with self.assertRaisesRegex(ValueError, "I5"):
-            check_invariants(replace(self.books, ledger=tuple(rows + rows)), exact_usd)
+            check_invariants(replace(self.books, ledger=tuple(rows + rows)))
+
+    def test_generated_multicurrency_books(self) -> None:
+        config = _preset("hard")
+        currencies = set()
+        for seed in range(32):
+            world = build(config, Generator(PCG64(seed)))
+            events = generate_events(world, config["n_invoices"], Generator(PCG64(seed + 100)))
+            currencies.update(i.currency for i in events.invoices)
+            books = post(world, events)
+            self.assertTrue(all(row.currency == "KZT" for row in books.ledger))
+        self.assertEqual(currencies, {"KZT", "USD", "EUR", "JPY", "KWD"})
 
     def test_generated_domestic_books(self) -> None:
         config = dict(_preset("medium"), currencies=["KZT"])

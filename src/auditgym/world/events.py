@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from numpy.random import Generator
 
@@ -19,6 +19,19 @@ class Invoice:
     total_minor: int
     original: int | None = None  # Set only for a credit note.
     service_period: str | None = None  # YYYY-MM for a billed service period.
+    number_source: int | None = None  # Original number assigned by the IDs stream.
+    number_style: str = "canonical"
+
+    def number(self, assigned: Mapping[int, str]) -> str:
+        """Render the billing number after opaque canonical numbers are assigned."""
+        value = assigned[self.key if self.number_source is None else self.number_source]
+        if self.number_style == "compact":
+            return value.replace("-", "")
+        if self.number_style == "lower":
+            return value.lower()
+        if self.number_style == "zero":
+            return value.replace("INV-", "INV-0")
+        return value
 
 
 @dataclass(frozen=True)

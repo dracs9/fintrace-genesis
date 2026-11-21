@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auditgym.local/schemas/action.schema.json",
+  "title": "AuditGym action (DRAFT by Role 2, to be moved to schemas/ by Role 3)",
+  "type": "object",
+  "required": ["tool"],
+  "additionalProperties": false,
+  "properties": {
+    "tool": {"type": "string"},
+    "args": {"type": "object"}
+  },
+  "$defs": {
+    "table": {"enum": ["ledger", "invoices", "payments", "fx"]},
+    "list_records": {
+      "type": "object",
+      "required": ["table"],
+      "additionalProperties": false,
+      "properties": {
+        "table": {"$ref": "#/$defs/table"},
+        "cursor": {"type": ["string", "null"]},
+        "limit": {"type": "integer"}
+      }
+    },
+    "get_record": {
+      "type": "object",
+      "required": ["table", "id"],
+      "additionalProperties": false,
+      "properties": {
+        "table": {"$ref": "#/$defs/table"},
+        "id": {"type": "string", "maxLength": 128}
+      }
+    },
+    "get_document": {
+      "type": "object",
+      "required": ["doc_id"],
+      "additionalProperties": false,
+      "properties": {"doc_id": {"type": "string", "maxLength": 128}}
+    },
+    "calculator": {
+      "type": "object",
+      "required": ["expression"],
+      "additionalProperties": false,
+      "properties": {"expression": {"type": "string"}}
+    },
+    "submit": {
+      "type": "object",
+      "required": ["findings"],
+      "additionalProperties": false,
+      "properties": {"findings": {"type": "object"}}
+    }
+  }
+}

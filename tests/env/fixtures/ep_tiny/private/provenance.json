@@ -1,0 +1,1 @@
+{"config":{},"config_hash":"fixture","distractors":[],"generator_version":"1.0.0","mutations":[{"causal_note":"Invoice INV-1042 re-entered 3 days later as INV1042","decomposition":null,"diff":{"added":["doc:D-k9mq1b","ledger:R-c3z8aa","ledger:R-d8y1bb"],"modified":[],"removed":[]},"injector":"duplicate_invoice","issue_ids":["iss_01"]}],"seed":424242,"stream_keys":[]}

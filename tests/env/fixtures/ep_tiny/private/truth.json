@@ -1,0 +1,1 @@
+{"episode_id":"ep_0123456789ab","issues":[{"affected_ids":["doc:D-k9mq1b"],"currency":"KZT","evidence_sets":[["doc:D-7q2x9a","doc:D-k9mq1b","ledger:R-c3z8aa"],["doc:D-7q2x9a","doc:D-k9mq1b","ledger:R-d8y1bb"]],"expected_amount_minor":100000,"issue_id":"iss_01","type":"duplicate_invoice"}]}

@@ -20,8 +20,11 @@ RUN uv sync --frozen
 
 # Pre-generate the public splits at build time, so that the run needs no network and
 # private/ can be locked down: owned by `grader`, files 0400, directories 0500.
+# The generator publishes via TemporaryDirectory (mode 0700), so open/ is made world-readable first.
 RUN uv run --no-sync auditgym generate --split train --n 10 --config medium --out data \
  && uv run --no-sync auditgym generate --split dev --n 10 --config medium --out data \
+ && find data -type d -exec chmod 0755 {} + \
+ && find data -type f -exec chmod 0444 {} + \
  && find data -type d -name private -exec chown -R grader:grader {} + \
  && find data -type d -name private -exec chmod 0500 {} + \
  && find data -path '*/private/*' -type f -exec chmod 0400 {} + \

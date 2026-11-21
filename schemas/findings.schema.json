@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "episode_id",
+    "findings"
+  ],
+  "properties": {
+    "episode_id": {
+      "type": "string",
+      "pattern": "^ep_[0-9a-f]{12}$"
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "$defs": {
+    "issueType": {
+      "enum": [
+        "duplicate_invoice",
+        "payment_misallocation",
+        "fx_rate_error",
+        "cutoff_error"
+      ]
+    },
+    "currency": {
+      "enum": [
+        "KZT",
+        "USD",
+        "EUR",
+        "JPY",
+        "KWD"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^(doc:D-[a-z0-9]{6}|ledger:R-[a-z0-9]{6}|fx:[0-9]{4}-[0-9]{2}-[0-9]{2}:(KZT|USD|EUR|JPY|KWD):(KZT|USD|EUR|JPY|KWD))$"
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "affected_ids",
+        "claimed_amount_minor",
+        "currency",
+        "evidence_ids",
+        "explanation"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/issueType"
+        },
+        "affected_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "claimed_amount_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      }
+    }
+  }
+}

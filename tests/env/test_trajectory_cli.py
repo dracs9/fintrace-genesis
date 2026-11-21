@@ -108,6 +108,50 @@ def test_missing_role_commands_report_not_implemented(tmp_path: Path, monkeypatc
     assert "not implemented yet" in capsys.readouterr().err
 
 
+def test_run_starts_grader_as_grader_user_then_drops_to_agent(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """SPEC §9.5 order: grader worker first (with its account), then the runner drops to agent."""
+    import auditgym.grader.privileges as privileges
+
+    events: list[tuple[str, object]] = []
+
+    class Grader(FakeGraderClient):
+        def __init__(self, data_root: Path, *, run_as: str | None = None) -> None:
+            super().__init__()
+            events.append(("grader", run_as))
+
+        def close(self) -> None:
+            events.append(("close", None))
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(cli.GRADER_USER_ENV, "grader")
+    monkeypatch.setenv(cli.AGENT_USER_ENV, "agent")
+    monkeypatch.setattr(cli, "_resolve", lambda spec: Grader if spec == cli.ENTRY_POINTS["grader"]
+                        else pytest.fail(spec))
+    monkeypatch.setattr(privileges, "drop_to", lambda user: events.append(("drop", user)))
+    monkeypatch.setattr(cli, "load_policy", lambda spec: ScriptedPolicy())
+    assert cli.main(["run", "--policy", "x", "--split", "dev", "--n", "1", "--config", "easy"]) == 0
+    assert events == [("grader", "grader"), ("drop", "agent"), ("close", None)]
+
+
+def test_no_privilege_env_means_no_drop(monkeypatch: pytest.MonkeyPatch) -> None:
+    import auditgym.grader.privileges as privileges
+
+    monkeypatch.delenv(cli.AGENT_USER_ENV, raising=False)
+    monkeypatch.setattr(privileges, "drop_to", lambda user: pytest.fail("dropped"))
+    cli.drop_agent_privileges()
+
+
+def test_all_skips_unimplemented_policy_before_spawning(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing(spec: str) -> None:
+        raise cli.NotImplementedYet(spec)
+
+    monkeypatch.setattr(cli, "load_policy", missing)
+    monkeypatch.setattr(cli.subprocess, "call", lambda *a, **k: pytest.fail("spawned"))
+    with pytest.raises(cli.NotImplementedYet):
+        cli._run_subprocess("oracle", cli.build_parser().parse_args(["all"]))
+
+
 def test_unknown_policy(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["run", "--policy", "nope", "--split", "dev", "--n", "1"]) == 1
     assert cli.main(["run", "--policy", "no_such_pkg.mod:Cls", "--split", "dev", "--n", "1"]) == 1

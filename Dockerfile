@@ -32,6 +32,8 @@ RUN uv run --no-sync auditgym generate --split train --n 10 --config medium --ou
  && chown -R agent:agent runs reports \
  && chown -R grader:grader logs && chmod 0700 logs
 
-USER agent
+# The runner starts as root only to split UIDs (SPEC §9.5): the grader worker switches to
+# `grader` before reading private/, and `auditgym run` switches to `agent` before any policy step.
+ENV AUDITGYM_GRADER_USER=grader AUDITGYM_AGENT_USER=agent
 ENTRYPOINT ["uv", "run", "--no-sync", "auditgym"]
 CMD ["all"]

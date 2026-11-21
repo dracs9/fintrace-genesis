@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "episode_id",
+    "issues"
+  ],
+  "properties": {
+    "episode_id": {
+      "type": "string",
+      "pattern": "^ep_[0-9a-f]{12}$"
+    },
+    "issues": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "$ref": "#/$defs/issue"
+      }
+    }
+  },
+  "$defs": {
+    "issueType": {
+      "enum": [
+        "duplicate_invoice",
+        "payment_misallocation",
+        "fx_rate_error",
+        "cutoff_error"
+      ]
+    },
+    "currency": {
+      "enum": [
+        "KZT",
+        "USD",
+        "EUR",
+        "JPY",
+        "KWD"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^(doc:D-[a-z0-9]{6}|ledger:R-[a-z0-9]{6}|fx:[0-9]{4}-[0-9]{2}-[0-9]{2}:(KZT|USD|EUR|JPY|KWD):(KZT|USD|EUR|JPY|KWD))$"
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issue_id",
+        "type",
+        "affected_ids",
+        "expected_amount_minor",
+        "currency",
+        "evidence_sets"
+      ],
+      "properties": {
+        "issue_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "$ref": "#/$defs/issueType"
+        },
+        "affected_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "expected_amount_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "evidence_sets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        }
+      }
+    }
+  }
+}

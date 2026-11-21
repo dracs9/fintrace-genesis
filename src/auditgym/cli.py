@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import subprocess
 import sys
 import time
@@ -21,6 +22,9 @@ from .logging.trajectory import EpisodeSummary, TrajectoryWriter, write_summary
 
 SPLITS = {"train": 10_000, "dev": 20_000}
 NOT_IMPLEMENTED = 2
+# Docker privilege separation (SPEC §9.5): unset locally, set in the Dockerfile.
+GRADER_USER_ENV = "AUDITGYM_GRADER_USER"
+AGENT_USER_ENV = "AUDITGYM_AGENT_USER"
 
 # Other roles' functions. Adjust here when their modules land.
 ENTRY_POINTS = {
@@ -101,7 +105,15 @@ def make_grader(data_root: Path) -> Any | None:
     except NotImplementedYet:
         print("grader: not implemented yet (rewards are 0.0)", file=sys.stderr)
         return None
-    return cls(data_root)
+    return cls(data_root, run_as=os.environ.get(GRADER_USER_ENV) or None)
+
+
+def drop_agent_privileges() -> None:
+    """Switch this process to ``$AUDITGYM_AGENT_USER`` (irreversible); no-op when unset."""
+    user = os.environ.get(AGENT_USER_ENV)
+    if user:
+        from .grader.privileges import drop_to
+        drop_to(user)
 
 
 def run_policy_episode(env: AuditEnv, policy: Any, seed: int, config: dict | str,
@@ -152,6 +164,12 @@ def cmd_run(args: argparse.Namespace) -> int:
     run_dir = Path(args.runs) / (args.run_id or f"{name}-{args.split}-{args.mode}")
     real = make_grader(data_root)
     grader = None if real is None else _RecordingGrader(real)
+    try:
+        drop_agent_privileges()  # after the grader worker is started, before any policy step
+    except BaseException:
+        if real is not None:
+            real.close()
+        raise
     env = AuditEnv(data_root, mode=args.mode, grader=grader, max_steps=args.max_steps)
     rows = []
     try:
@@ -214,15 +232,25 @@ def cmd_all(args: argparse.Namespace) -> int:
         if not stage("pytest", lambda: subprocess.call([sys.executable, "-m", "pytest", "-q"])):
             return 1
     for policy in POLICIES:
-        ns = argparse.Namespace(**base, split="dev", policy=policy, mode="train", run_id=None,
-                                max_steps=100)
-        if not stage(f"run {policy}", lambda ns=ns: cmd_run(ns)):
+        if not stage(f"run {policy}", lambda p=policy: _run_subprocess(p, args)):
             return 1
     if not stage("report", lambda: cmd_report(argparse.Namespace(runs=args.runs,
                                                                   out="reports/baselines.md"))):
         return 1
     print("all: done" + (f" (skipped: {', '.join(skipped)})" if skipped else ""))
     return 0
+
+
+def _run_subprocess(policy: str, args: argparse.Namespace) -> int:
+    """Run one policy on dev in a child ``auditgym run``.
+
+    Each run drops privileges irreversibly, so ``all`` keeps its own UID and starts a fresh
+    process per policy. A policy that is not implemented yet is detected here and skipped.
+    """
+    load_policy(policy)
+    return subprocess.call([sys.executable, "-m", "auditgym.cli", "run", "--policy", policy,
+                            "--split", "dev", "--mode", "train", "--config", str(args.config),
+                            "--n", str(args.n), "--data", str(args.data), "--runs", str(args.runs)])
 
 
 def build_parser() -> argparse.ArgumentParser:

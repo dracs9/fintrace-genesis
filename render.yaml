@@ -1,0 +1,17 @@
+# Render Blueprint: New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: fintrace-studio
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    plan: starter
+    numInstances: 1  # Studio keeps one episode in memory; never scale horizontally.
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: "10000"
+      # Extra custom domains, comma-separated. The onrender.com host is added automatically.
+      - key: FINTRACE_PUBLIC_HOSTS
+        value: ""

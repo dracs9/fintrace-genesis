@@ -159,3 +159,30 @@ def test_local_frontend_assets(api: HTTPConnection) -> None:
         assert response.status == 200 and content
         if path.endswith(".woff2"):
             assert content.startswith(b"wOF2")
+
+
+def test_public_host_mode_and_health(tmp_path: Path) -> None:
+    with server(tmp_path, 0, public_hosts=("fintrace.example.com",)) as http:
+        thread = Thread(target=http.serve_forever, kwargs={"poll_interval": 0.02})
+        thread.start()
+        client = HTTPConnection(*http.server_address, timeout=90)
+        try:
+            public = {"Host": "fintrace.example.com"}
+            assert request(client, "/api/runs", **public) == {"runs": []}
+            # Same-origin HTTPS call passes the boundary and reaches argument validation.
+            request(client, "/api/env/reset", {**CONFIG, "config": "x"}, 400,
+                    **public, Origin="https://fintrace.example.com")
+            request(client, "/api/runs", status=403, Host="evil.example.com")
+            request(client, "/api/env/reset", CONFIG, 403, **public, Origin="http://fintrace.example.com")
+            request(client, "/api/env/reset", CONFIG, 403, **public, Origin="https://evil.example.com")
+            client.request("GET", "/healthz", headers={"Host": "10.0.0.1:10000"})
+            response = client.getresponse()
+            assert response.status == 200 and response.read() == b"ok"
+        finally:
+            client.close()
+            http.shutdown()
+            thread.join()
+
+
+def test_unconfigured_server_rejects_foreign_host(api: HTTPConnection) -> None:
+    request(api, "/api/runs", status=403, Host="fintrace.example.com")

@@ -1,9 +1,14 @@
-"""Local operator console for FinTrace. Start from the checkout with python -m fintrace.web_server."""
+"""Operator console for FinTrace. Start from the checkout with python -m fintrace.web_server.
+
+Loopback-only by default. A hosted deployment binds ``--host 0.0.0.0`` and names its public
+domains with ``--public-host`` or ``FINTRACE_PUBLIC_HOSTS`` (comma-separated); Render's
+``RENDER_EXTERNAL_HOSTNAME`` is added automatically. Requests for any other ``Host`` get 403."""
 from __future__ import annotations
 
 import argparse
 import json
 import multiprocessing
+import os
 import re
 import time
 from concurrent.futures import ProcessPoolExecutor
@@ -201,8 +206,10 @@ class Studio:
 
 
 class _HTTP(BaseHTTPRequestHandler):
-    def __init__(self, *args: Any, studio: Studio, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, studio: Studio, public_hosts: frozenset[str] = frozenset(),
+                 **kwargs: Any) -> None:
         self.studio = studio
+        self.public_hosts = public_hosts
         super().__init__(*args, **kwargs)
 
     def log_message(self, format: str, *args: object) -> None:
@@ -224,15 +231,20 @@ class _HTTP(BaseHTTPRequestHandler):
         self._send(status, canonical_json(value).encode(), "application/json; charset=utf-8")
 
     def _local(self) -> bool:
+        """Accept loopback or a configured public domain, and only same-origin browser calls."""
         port = self.server.server_port
         host = self.headers.get("Host")
-        return (host in (f"127.0.0.1:{port}", f"localhost:{port}")
-                and self.headers.get("Origin") in (None, f"http://{host}"))
+        origin = self.headers.get("Origin")
+        if host in (f"127.0.0.1:{port}", f"localhost:{port}"):
+            return origin in (None, f"http://{host}")
+        return host in self.public_hosts and origin in (None, f"https://{host}")
 
     def do_GET(self) -> None:
         """Serve allowlisted assets and completed benchmark measurements on loopback."""
         path = urlsplit(self.path).path
-        if not self._local():
+        if path == "/healthz":  # Platform probes use internal Host headers; reveals nothing.
+            self._send(200, b"ok", "text/plain; charset=utf-8")
+        elif not self._local():
             self._json(403, {"error": EnvError("BAD_ARGS").payload()})
         elif path == "/api/runs":
             self._api(path, {})
@@ -279,11 +291,15 @@ class _HTTP(BaseHTTPRequestHandler):
 
 
 @contextmanager
-def server(root: Path, port: int = 8765) -> Iterator[ThreadingHTTPServer]:
-    """Bind a loopback server for a checkout and release every grader on shutdown."""
+def server(root: Path, port: int = 8765, *, host: str = "127.0.0.1",
+           public_hosts: tuple[str, ...] = ()) -> Iterator[ThreadingHTTPServer]:
+    """Bind a server for a checkout and release every grader on shutdown.
+
+    ``public_hosts`` are exact ``Host`` values (no port) served behind an HTTPS proxy."""
     studio = Studio(root)
+    handler = partial(_HTTP, studio=studio, public_hosts=frozenset(h.lower() for h in public_hosts))
     try:
-        with ThreadingHTTPServer(("127.0.0.1", port), partial(_HTTP, studio=studio)) as http:
+        with ThreadingHTTPServer((host, port), handler) as http:
             yield http
     finally:
         studio.close()
@@ -292,10 +308,15 @@ def server(root: Path, port: int = 8765) -> Iterator[ThreadingHTTPServer]:
 def main() -> None:
     """Serve the local Studio until interrupted."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8765")))
+    parser.add_argument("--public-host", action="append", default=[])
     args = parser.parse_args()
-    with server(Path.cwd(), args.port) as http:
-        print(f"FinTrace Studio  http://127.0.0.1:{http.server_port}", flush=True)
+    env_hosts = os.environ.get("FINTRACE_PUBLIC_HOSTS", "").split(",")
+    env_hosts.append(os.environ.get("RENDER_EXTERNAL_HOSTNAME", ""))
+    public = tuple(sorted({h.strip() for h in [*args.public_host, *env_hosts] if h.strip()}))
+    with server(Path.cwd(), args.port, host=args.host, public_hosts=public) as http:
+        print(f"FinTrace Studio  http://{args.host}:{http.server_port}", flush=True)
         try:
             http.serve_forever()
         except KeyboardInterrupt:

@@ -20,6 +20,8 @@ jobs:
         run: uv sync --frozen
       - name: Tests
         run: uv run pytest -q
+      - name: Studio frontend tests
+        run: node --test tests/test_web_ui.mjs
 
   docker:
     runs-on: ubuntu-latest

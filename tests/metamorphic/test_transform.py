@@ -2,8 +2,10 @@
 
 import csv
 import json
+import os
 import re
 import shutil
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -46,9 +48,15 @@ def test_bijection_covers_open_and_deleted_records(tmp_path: Path) -> None:
     dst = tmp_path / "dst"
     mapping = transform(src, dst, permute_seed=7, id_salt="first")
     assert _files(src) == initial
-    assert (dst / "private").stat().st_mode & 0o077 == 0
-    for path in sorted((dst / "private").iterdir()):
-        assert path.stat().st_mode & 0o777 == 0o400
+    private = dst / "private"
+    if os.name == "posix":
+        assert private.stat().st_mode & 0o077 == 0
+    for path in sorted(private.iterdir()):
+        info = path.stat()
+        if os.name == "nt":
+            assert info.st_file_attributes & stat.FILE_ATTRIBUTE_READONLY
+        else:
+            assert info.st_mode & 0o777 == 0o400
     public_ids = {r["row_id"] for r in _records(src, "ledger.csv")}
     public_ids.update(r["doc_id"] for name in ("invoices.jsonl", "payments.jsonl")
                       for r in _records(src, name))
@@ -108,7 +116,10 @@ def test_conflicting_destination_and_failed_read_preserve_files(tmp_path: Path) 
     with pytest.raises(ValueError, match="disjoint"):
         transform(dst, dst / "other", permute_seed=0, id_salt="one")
     assert _files(dst) == before
-    (dst / "private/truth.json").unlink()
+    truth = dst / "private/truth.json"
+    if os.name == "nt":
+        truth.chmod(stat.S_IWRITE)  # Windows refuses unlink on a read-only file.
+    truth.unlink()
     with pytest.raises(OSError):
         transform(dst, tmp_path / "missing", permute_seed=0, id_salt="two")
     assert not (tmp_path / "missing").exists()

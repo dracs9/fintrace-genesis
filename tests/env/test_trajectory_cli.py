@@ -10,6 +10,7 @@ import pytest
 from env_helpers import FakeGraderClient, ScriptedPolicy, check_obs, leaks
 from auditgym import cli
 from auditgym.env import AuditEnv
+from auditgym.env import core
 from auditgym.logging.trajectory import SUMMARY_FIELDS, TrajectoryWriter, read_jsonl
 
 TRAJ_FIELDS = sorted(["episode_id", "policy", "step", "action", "observation", "reward", "terminated",
@@ -57,6 +58,24 @@ def test_writer_requires_begin(tmp_path: Path) -> None:
     with TrajectoryWriter(tmp_path / "t.jsonl", "p") as writer:
         with pytest.raises(RuntimeError):
             writer.step(1, {}, {}, 0.0, False, False)
+
+
+def test_trajectory_records_wall_timeout_without_logging_the_ignored_action(
+    tiny_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ticks = iter((100.0, 160.0))
+    monkeypatch.setattr(core, "monotonic", lambda: next(ticks))
+    grader = cli._RecordingGrader(FakeGraderClient())
+    env = AuditEnv(tiny_dir.parent, grader=grader)
+    obs, info = env.reset_from_dir(tiny_dir)
+    path = tmp_path / "trajectory.jsonl"
+    with TrajectoryWriter(path, "scripted") as writer:
+        summary = cli._run_observation(env, ScriptedPolicy(), writer, grader, obs, info, 0.0)
+    reset, terminal = read_jsonl(path)
+    assert (reset["step"], terminal["step"]) == (0, 1)
+    assert terminal["truncated"] and terminal["action"] is None
+    assert summary.steps == terminal["observation"]["steps_used"] == 0
+    assert grader.inner.calls == [(info["episode_id"], None, 0)]
 
 
 def test_cli_run_with_external_policy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

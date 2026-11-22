@@ -141,12 +141,14 @@ def _run_observation(env: AuditEnv, policy: Any, writer: TrajectoryWriter,
         grader.last = None
     writer.begin(info, obs)
     policy.reset(obs, seed=0)  # Public exploration seed, independent of episode generation.
-    step = 0
+    transition = 0
     while True:
+        previous_steps = obs["steps_used"]
         action = policy.act(obs)
         obs, reward, terminated, truncated, _ = env.step(action)
-        step += 1
-        writer.step(step, action, obs, reward, terminated, truncated)
+        transition += 1
+        recorded_action = action if obs["steps_used"] > previous_steps else None
+        writer.step(transition, recorded_action, obs, reward, terminated, truncated)
         if terminated or truncated:
             break
     grade = None if grader is None else grader.last

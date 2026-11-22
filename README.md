@@ -24,8 +24,8 @@ GPU, интернет и платные API не нужны.
 ## 2. Установка
 
 ```shell
-git clone https://github.com/sanzhartulepbaev/genesis-hackaton.git
-cd genesis-hackaton
+git clone https://github.com/kwaiqs1/auditgym.git
+cd auditgym
 uv sync
 ```
 
@@ -46,6 +46,10 @@ uv run auditgym all --config easy --n 2 --skip-tests
 ```
 
 После `all: done` доступны траектории и сводки для четырёх политик на train и dev. Результат проверки данных записан в `reports/validation.json`.
+
+Стандартный запуск создаёт по 10 эпизодов в `data/train/` и `data/dev/` и восемь наборов траекторий в `runs/`. Для публичной сдачи включите каталоги `open/`, файлы `trajectories.jsonl` и сводки `summary.jsonl`. Каталоги `private/` и журнал оценщика используются доверенным проверяющим.
+
+У автоматического эпизода 100 действий и 60 секунд после reset. Когда следующий вызов `step` приходит после истечения времени, среда завершает эпизод с пустым ответом. Для принудительной остановки внешнего агента, который перестал вызывать `step`, нужен watchdog процесса. В ручном Studio действует бюджет действий, чтобы оператор мог читать документы между запросами.
 
 ### AuditGym Studio
 
@@ -294,4 +298,4 @@ uv run python -m auditgym.validate.report --data data --runs runs/benchmark --ou
 
 ## Лицензия
 
-Apache-2.0.
+[Apache-2.0](LICENSE).

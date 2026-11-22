@@ -77,7 +77,7 @@ def _measurements(runs: Path, data: Path) -> list[Measurement]:
             if identifier not in locations:
                 raise ValueError("episode for report missing from dataset")
             if (identifier != end["episode_id"] or summary.policy != end["policy"]
-                    or summary.steps != end["step"]):
+                    or summary.steps != end["observation"]["steps_used"]):
                 raise ValueError("trajectory/summary mismatch")
             episode, config_version, generator_version = locations[identifier]
             payload = end["action"]["args"]["findings"] if end["terminated"] else None

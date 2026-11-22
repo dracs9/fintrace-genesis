@@ -57,12 +57,13 @@ def _frame(env: AuditEnv, action: Json) -> Json:
 class _Episode:
     """Own one environment, grader process and isolated single-submission operator log."""
 
-    def __init__(self, stack: ExitStack, mode: Mode) -> None:
+    def __init__(self, stack: ExitStack, mode: Mode, *, interactive: bool = False) -> None:
         root = Path(stack.enter_context(TemporaryDirectory(prefix="auditgym-studio-")))
         self.data = root / "data"
         self.log = root / "operator" / "grader.jsonl"
         grader = stack.enter_context(GraderClient(self.data, log_dir=self.log.parent))
-        self.env = AuditEnv(self.data, mode=mode, grader=grader)
+        env_class = _InteractiveEnv if interactive else AuditEnv
+        self.env = env_class(self.data, mode=mode, grader=grader)
         stack.callback(self.env.close)
 
     def step(self, action: Json) -> Json:
@@ -73,6 +74,12 @@ class _Episode:
             grade, = read_jsonl(self.log)
             frame["grade"] = grade
         return frame
+
+
+class _InteractiveEnv(AuditEnv):
+    """Keep the step cap for manual review and exclude the operator's reading time."""
+
+    _episode_seconds = float("inf")
 
 
 def _run_policy(seed: int, config: str, mode: Mode, name: str) -> Json:
@@ -159,7 +166,7 @@ class Studio:
         elif path == "/api/env/reset":
             seed, config, mode = _settings(body)
             with ExitStack() as pending:
-                episode = _Episode(pending, mode)
+                episode = _Episode(pending, mode, interactive=True)
                 obs, info = episode.env.reset(seed, config)
                 self.close()
                 self.episode, self.resources = episode, pending.pop_all()

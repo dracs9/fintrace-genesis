@@ -9,6 +9,7 @@ import pytest
 
 from env_helpers import TINY_ID, FakeGraderClient, check_info, check_obs
 from auditgym.env import AuditEnv
+from auditgym.env import core
 from auditgym.env.core import FINDING_TYPES, TASK, canonical_json
 
 LIST_INV = {"tool": "list_records", "args": {"table": "invoices"}}
@@ -105,6 +106,31 @@ def test_99_steps_then_submit_terminates(started: AuditEnv, grader: FakeGraderCl
     assert term is True and trunc is False
     assert obs["steps_used"] == 100 and obs["steps_left"] == 0
     assert grader.calls[0][2] == 99
+
+
+def test_wall_timeout_scores_empty_once_and_reset_starts_a_new_clock(
+    tiny_dir: Path, grader: FakeGraderClient, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = 100.0
+    monkeypatch.setattr(core, "monotonic", lambda: now)
+    env = AuditEnv(tiny_dir.parent, grader=grader)
+    env.reset_from_dir(tiny_dir)
+    now = 159.9
+    assert env.step(LIST_INV)[3] is False
+    now = 160.0
+    obs, _, terminated, truncated, _ = env.step(_submit())
+    check_obs(obs)
+    assert (terminated, truncated, obs["steps_used"]) == (False, True, 1)
+    assert grader.calls == [(TINY_ID, None, 1)]
+    assert env.step(_submit())[0]["error"]["code"] == "EPISODE_DONE"
+    assert len(grader.calls) == 1
+    env.reset_from_dir(tiny_dir)
+    assert env.step(_submit())[2:4] == (True, False)
+
+
+def test_step_budget_cannot_exceed_case_limit(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="between 1 and 100"):
+        AuditEnv(tmp_path, max_steps=101)
 
 
 def test_100_steps_without_submit_truncates(started: AuditEnv, grader: FakeGraderClient) -> None:

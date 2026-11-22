@@ -18,8 +18,9 @@ import hashlib
 import json
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
+from time import monotonic
 from types import MappingProxyType
 from typing import Any, Literal, Mapping, Protocol
 
@@ -101,6 +102,7 @@ class _State:
     steps_used: int = 0
     terminated: bool = False
     truncated: bool = False
+    deadline: float = 0.0
 
     @property
     def active(self) -> bool:
@@ -110,12 +112,14 @@ class _State:
 class AuditEnv:
     """Read-only audit environment with a JSON action/observation contract (SPEC §8.1)."""
 
+    _episode_seconds = 60
+
     def __init__(self, data_root: Path, mode: Literal["train", "eval"] = "train",
                  grader: GraderClient | None = None, max_steps: int = 100) -> None:
         if mode not in ("train", "eval"):
             raise ValueError("mode must be 'train' or 'eval'")
-        if type(max_steps) is not int or max_steps < 1:
-            raise ValueError("max_steps must be a positive int")
+        if type(max_steps) is not int or not 1 <= max_steps <= 100:
+            raise ValueError("max_steps must be between 1 and 100")
         self._data_root = Path(data_root)
         self._mode = mode
         self._grader = grader
@@ -149,6 +153,10 @@ class AuditEnv:
             obs = self._obs(False, None, EnvError("EPISODE_DONE"))
             return obs, 0.0, state.terminated, state.truncated, {}
         assert state.data is not None
+        if monotonic() >= state.deadline:
+            self._state = replace(state, truncated=True)
+            reward, info = self._grade(state.data.episode_id, None, state.steps_used)
+            return self._obs(True, {}, None), reward, False, True, info
         steps_used = state.steps_used + 1
         submitted: dict | None = None
         ok, result, error = True, None, None
@@ -168,8 +176,7 @@ class AuditEnv:
             ok, error = False, EnvError("BAD_ARGS")
         terminated = submitted is not None
         truncated = not terminated and steps_used >= self._max_steps
-        self._state = _State(data=state.data, steps_used=steps_used,
-                             terminated=terminated, truncated=truncated)
+        self._state = replace(state, steps_used=steps_used, terminated=terminated, truncated=truncated)
         obs = self._obs(ok, result, error)
         if terminated:
             reward, info = self._grade(state.data.episode_id, submitted, steps_used - 1)
@@ -186,7 +193,7 @@ class AuditEnv:
     def _start(self, data: EpisodeData, expected_id: str | None) -> tuple[dict, dict]:
         if expected_id is not None and data.episode_id != expected_id:
             raise RuntimeError("episode id mismatch between env and generator")
-        self._state = _State(data=data)
+        self._state = _State(data=data, deadline=monotonic() + self._episode_seconds)
         manifest = data.manifest
         result = {
             "task": TASK,

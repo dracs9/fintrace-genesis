@@ -1,0 +1,10 @@
+{"episode_id":"ep_43ac95927b09","f1":0.14285714285714285,"policy":"reconciler","precision":0.07692307692307693,"recall":1.0,"reward":-0.7442857142857143,"steps":16,"wall_time_s":0.476}
+{"episode_id":"ep_32805b4f52d4","f1":0.27586206896551724,"policy":"reconciler","precision":0.19047619047619047,"recall":0.5,"reward":-0.47827586206896555,"steps":16,"wall_time_s":0.036}
+{"episode_id":"ep_c183a7dec874","f1":0.0,"policy":"reconciler","precision":0.0,"recall":0.0,"reward":-1.0,"steps":15,"wall_time_s":0.021}
+{"episode_id":"ep_159325eeb4b4","f1":0.0625,"policy":"reconciler","precision":0.03333333333333333,"recall":0.5,"reward":-0.911,"steps":19,"wall_time_s":0.038}
+{"episode_id":"ep_490d28189a93","f1":0.0,"policy":"reconciler","precision":0.0,"recall":0.0,"reward":-1.0,"steps":14,"wall_time_s":0.021}
+{"episode_id":"ep_ef9bae4caca4","f1":0.0,"policy":"reconciler","precision":0.0,"recall":0.0,"reward":-1.0,"steps":16,"wall_time_s":0.029}
+{"episode_id":"ep_cce771f5d687","f1":0.0,"policy":"reconciler","precision":0.0,"recall":0.0,"reward":-1.0,"steps":16,"wall_time_s":0.031}
+{"episode_id":"ep_736d23e03e59","f1":0.38095238095238093,"policy":"reconciler","precision":0.3076923076923077,"recall":0.5,"reward":-0.26809523809523816,"steps":16,"wall_time_s":0.03}
+{"episode_id":"ep_8693a96f0e80","f1":0.0,"policy":"reconciler","precision":0.0,"recall":0.0,"reward":-1.0,"steps":14,"wall_time_s":0.023}
+{"episode_id":"ep_3e75881fb376","f1":0.0,"policy":"reconciler","precision":0.0,"recall":0.0,"reward":-1.0,"steps":14,"wall_time_s":0.022}

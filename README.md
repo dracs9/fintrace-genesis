@@ -1,5 +1,22 @@
 # FinTrace
 
+## Ссылки
+
+- Живое демо: https://fintrace-studio.onrender.com/
+- Демо-видео: <ССЫЛКА_НА_ВИДЕО>
+- Команда: «Круасанчик»
+
+## Что лежит в репозитории для проверки
+
+| Что | Где |
+|---|---|
+| Эпизоды: 10 train + 10 dev | `data/train/ep_*/open/`, `data/dev/ep_*/open/` (по 6 файлов: `manifest.json`, `policy.json`, `ledger.csv`, `invoices.jsonl`, `payments.jsonl`, `fx.csv`) |
+| Эталон (`private/`) | Не коммитится. Пересоздаётся побайтово по seed: `uv run fintrace generate --split train --n 10 --config medium --out data/` (и то же с `--split dev`) |
+| Траектории базовых политик | `runs/<политика>-<split>-train/trajectories.jsonl` и `summary.jsonl` (oracle, random_explorer, flag_all, reconciler × train/dev) |
+| Отчёты | [reports/baselines.md](reports/baselines.md), [reports/failure_analysis.md](reports/failure_analysis.md) |
+| Записка о дизайне | [DESIGN.md](DESIGN.md) |
+| Одна команда проверки | `make docker` (сборка образа и `fintrace all` без сети, 2 CPU, 4 ГБ) |
+
 FinTrace — учебная среда для ИИ-аудитора (кейс GENESIS 2026 FinTech).
 
 Как это работает:

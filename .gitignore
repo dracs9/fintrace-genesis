@@ -2,7 +2,10 @@ __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
-runs/
-logs/
-data/
 output/
+
+# Submission: episodes (open/ only) and baseline trajectories are committed.
+# The private answer key and grader logs must never be committed.
+data/*/*/private/
+logs/
+runs/**/grader*.jsonl

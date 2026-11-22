@@ -135,10 +135,14 @@ def test_isolation_reset_errors_and_static_boundary(api: HTTPConnection) -> None
     assert end["reward"] == 0 and end["grade"]["reward"] == -1 and end["info"] == {}
 
 
-def test_cli_summary_joins_public_manifest(api: HTTPConnection, tmp_path: Path) -> None:
+def test_cli_summary_joins_public_manifest(
+    api: HTTPConnection, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
     data = tmp_path / "data/dev"
     episode = ensure_episode(data, 20000, load_config("easy"))
     run_cached_episodes(data, [episode], "flag_all", tmp_path / "runs", split="dev")
+    assert (tmp_path / "logs/grader.jsonl").is_file()
     row, = request(api, "/api/runs")["runs"]
     assert row["episode_id"] == episode.name and row["policy"] == "flag_all"
     assert row["config"] == load_config("easy")["config_version"] and row["split"] == "dev"

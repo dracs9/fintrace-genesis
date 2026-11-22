@@ -30,7 +30,8 @@ RUN uv run --no-sync auditgym generate --split train --n 10 --config medium --ou
  && find data -path '*/private/*' -type f -exec chmod 0400 {} + \
  && mkdir -p runs reports logs \
  && chown -R agent:agent runs reports \
- && chown -R grader:grader logs && chmod 0700 logs
+ && chown grader:grader logs && chmod 0700 logs \
+ && install -o grader -g grader -m 0600 /dev/null logs/grader.jsonl
 
 # The runner starts as root only to split UIDs (SPEC §9.5): the grader worker switches to
 # `grader` before reading private/, and `auditgym run` switches to `agent` before any policy step.

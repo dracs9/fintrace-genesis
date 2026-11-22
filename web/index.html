@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0e0e15" />
+    <title>AuditGym Studio</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/studio.css" />
+    <script type="module" src="/studio.js"></script>
+  </head>
+  <body>
+    <header class="mast">
+      <a class="brand" href="#" aria-label="AuditGym Studio home"
+        ><i class="brand-mark" aria-hidden="true"></i>AuditGym <span>Studio</span></a
+      >
+      <nav aria-label="Workspace">
+        <button id="nav-work" class="nav active"><i data-icon="grid"></i>Environment</button
+        ><button id="nav-bench" class="nav"><i data-icon="chart"></i>Benchmarks</button>
+      </nav>
+      <div class="local"><i class="dot"></i>Local instance</div>
+    </header>
+    <main>
+      <div class="hero">
+        <div class="hero-field" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div>
+          <div class="eyebrow">Financial Audit RL Environment</div>
+          <h1 id="title">Audit the books.<br /><span>Trace the evidence.</span></h1>
+          <p id="hero-description">
+            Explore a generated ledger, build findings, and compare how audit policies score.
+          </p>
+        </div>
+        <div class="settings">
+          <label
+            >Seed<input id="seed" inputmode="numeric" value="20000" pattern="[0-9]+" class="mono"
+          /></label>
+          <label
+            >Difficulty<select id="preset">
+              <option>easy</option>
+              <option selected>medium</option>
+              <option>hard</option>
+            </select></label
+          >
+          <label
+            >Mode<select id="mode">
+              <option>train</option>
+              <option>eval</option>
+            </select></label
+          >
+          <button id="reset" class="primary"><i data-icon="reset"></i>New episode</button>
+        </div>
+      </div>
+      <div id="notice" role="status" hidden></div>
+      <section id="workbench" class="context" aria-label="Episode overview">
+        <div>
+          <span class="eyebrow">Episode</span><span id="episode" class="metric mono">—</span>
+        </div>
+        <div>
+          <span class="eyebrow">Reporting period</span
+          ><span id="period" class="metric mono">—</span>
+        </div>
+        <div>
+          <span class="eyebrow">Base currency</span><span id="base" class="metric mono">—</span>
+        </div>
+        <div class="budget">
+          <span class="eyebrow">Step budget</span
+          ><span class="metric mono"
+            ><span id="steps">—</span
+            ><progress id="progress" max="100" value="0" aria-label="Steps used"></progress
+          ></span>
+        </div>
+        <div class="statuscell">
+          <span class="eyebrow">Status</span><span id="status" class="status">READY</span>
+        </div>
+      </section>
+      <div id="work" class="work-grid">
+        <aside class="stack">
+          <section class="panel">
+            <h2><i data-icon="sliders"></i>Agent control</h2>
+            <div class="padded stack tight">
+              <label
+                >Policy<select id="policy">
+                  <option value="manual">Manual auditor</option>
+                  <option value="oracle">oracle</option>
+                  <option value="reconciler">reconciler</option>
+                  <option value="flag_all">flag_all</option>
+                  <option value="random">random_explorer</option>
+                </select></label
+              >
+              <button id="run" class="soft full" disabled>
+                <i data-icon="play"></i>Run policy
+              </button>
+              <div id="player" hidden>
+                <div class="label-line">
+                  <span>Replay</span><span id="position" class="mono"></span>
+                </div>
+                <div class="actions">
+                  <button id="prev">Prev</button><button id="play">Play</button
+                  ><button id="next">Next</button>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="panel trace-panel">
+            <h2>
+              <i data-icon="activity"></i>Trajectory log<span id="log-count" class="counter"
+                >0</span
+              >
+            </h2>
+            <div id="log" class="log"></div>
+          </section>
+        </aside>
+        <div class="stack center">
+          <section class="panel explorer">
+            <h2>
+              <i data-icon="books"></i>Open books explorer<span
+                id="total"
+                class="meta right"
+              ></span>
+            </h2>
+            <div id="tabs" class="booktabs" aria-label="Book tables"></div>
+            <div id="book-tools" class="search-line">
+              <i data-icon="search"></i
+              ><input
+                id="search"
+                aria-label="Filter by ID or account on this page"
+                placeholder="Filter this page by ID or account…"
+                autocomplete="off"
+              /><button id="find-next" title="Search remaining pages using list_records">
+                Find next
+              </button>
+            </div>
+            <div
+              id="records"
+              class="table-scroll"
+              tabindex="0"
+              aria-label="Open book records"
+            ></div>
+            <div class="pager" id="pager">
+              <span id="page-range" class="mono"></span>
+              <div class="actions">
+                <button id="page-prev" aria-label="Previous page">Prev</button
+                ><button id="page-next" aria-label="Next page">Next</button>
+              </div>
+            </div>
+            <div id="cursor-row" class="cursor-line">
+              <span class="eyebrow">Next cursor</span><code id="cursor"></code>
+            </div>
+          </section>
+          <section class="panel calculator">
+            <h2><i data-icon="calc"></i>AST calculator</h2>
+            <form id="calc" class="padded">
+              <div class="input-action">
+                <input
+                  id="expression"
+                  class="mono"
+                  required
+                  maxlength="200"
+                  placeholder="(125000 - 3500) / 100"
+                  aria-label="Arithmetic expression"
+                /><button type="submit">Evaluate</button>
+              </div>
+              <output id="calc-result" class="mono"></output>
+            </form>
+          </section>
+        </div>
+        <aside class="stack">
+          <section class="panel">
+            <h2>
+              <i data-icon="file"></i>Findings builder<span id="finding-count" class="counter"
+                >0 / 30</span
+              >
+            </h2>
+            <div id="builder" class="padded"></div>
+          </section>
+          <section class="panel">
+            <h2><i data-icon="scale"></i>Grader verdict</h2>
+            <div id="verdict" class="padded"></div>
+          </section>
+        </aside>
+      </div>
+      <section id="bench" class="panel" hidden>
+        <h2><i data-icon="chart"></i>Policy comparison</h2>
+        <div class="bench-filters">
+          <label>Completed episode<select id="cohort"></select></label
+          ><button id="refresh"><i data-icon="reset"></i>Refresh</button>
+          <button id="measure" class="primary">
+            <i data-icon="play"></i>Run all four policies
+          </button>
+        </div>
+        <div class="table-scroll">
+          <table class="benchmark">
+            <thead>
+              <tr>
+                <th>Policy</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1</th>
+                <th>Steps</th>
+                <th>Reward</th>
+                <th>Reward scale <span>−1 / +1</span></th>
+              </tr>
+            </thead>
+            <tbody id="baseline-rows"></tbody>
+          </table>
+        </div>
+        <p id="bench-note" class="bench-note"></p>
+      </section>
+    </main>
+    <dialog id="detail">
+      <header>
+        <h2 id="detail-title"></h2>
+        <button id="dismiss" aria-label="Close inspector">Close</button>
+      </header>
+      <div id="detail-body"></div>
+    </dialog>
+  </body>
+</html>

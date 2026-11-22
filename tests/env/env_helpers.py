@@ -9,7 +9,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from auditgym.env.tools import load_schema
+from fintrace.env.tools import load_schema
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 TINY = FIXTURES / "ep_tiny"

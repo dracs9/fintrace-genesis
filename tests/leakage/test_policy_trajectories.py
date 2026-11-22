@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from auditgym.grader.leakage import LeakIndex
+from fintrace.grader.leakage import LeakIndex
 
 
 def test_four_policy_trajectories_cover_50_episodes() -> None:
-    data = os.environ.get("AUDITGYM_TEST_EPISODES")
-    runs = os.environ.get("AUDITGYM_TEST_RUNS")
+    data = os.environ.get("FINTRACE_TEST_EPISODES")
+    runs = os.environ.get("FINTRACE_TEST_RUNS")
     if not data and not runs:
         pytest.skip("requires recorded Role 2/4 trajectories and their episodes")
     assert data and runs, "supply both fixture roots"

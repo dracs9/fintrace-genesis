@@ -5,15 +5,15 @@ from decimal import Decimal
 
 from numpy.random import Generator, PCG64
 
-from auditgym.books import Books, post
-from auditgym.common.money import convert
-from auditgym.injectors import BUILTINS, apply, registry
-from auditgym.injectors.base import COMPANY_TZ, handle, lines, row_handle
-from auditgym.injectors.distractors import prepare
-from auditgym.world import Entity, World, build
+from fintrace.books import Books, post
+from fintrace.common.money import convert
+from fintrace.injectors import BUILTINS, apply, registry
+from fintrace.injectors.base import COMPANY_TZ, handle, lines, row_handle
+from fintrace.injectors.distractors import prepare
+from fintrace.world import Entity, World, build
 from test_step0 import _preset
-from auditgym.world.events import Allocation, Events, Invoice, Payment
-from auditgym.world.fx import Market, Quote
+from fintrace.world.events import Allocation, Events, Invoice, Payment
+from fintrace.world.fx import Market, Quote
 
 
 def rng(seed: int) -> Generator:

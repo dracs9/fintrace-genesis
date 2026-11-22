@@ -8,10 +8,10 @@ from pathlib import Path
 import pytest
 
 from env_helpers import FakeGraderClient, ScriptedPolicy, check_obs, leaks
-from auditgym import cli
-from auditgym.env import AuditEnv
-from auditgym.env import core
-from auditgym.logging.trajectory import SUMMARY_FIELDS, TrajectoryWriter, read_jsonl
+from fintrace import cli
+from fintrace.env import AuditEnv
+from fintrace.env import core
+from fintrace.logging.trajectory import SUMMARY_FIELDS, TrajectoryWriter, read_jsonl
 
 TRAJ_FIELDS = sorted(["episode_id", "policy", "step", "action", "observation", "reward", "terminated",
                       "truncated", "schema_version", "config_version"])
@@ -130,7 +130,7 @@ def test_missing_role_commands_report_not_implemented(tmp_path: Path, monkeypatc
 def test_run_starts_grader_as_grader_user_then_drops_to_agent(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """SPEC §9.5 order: grader worker first (with its account), then the runner drops to agent."""
-    import auditgym.grader.privileges as privileges
+    import fintrace.grader.privileges as privileges
 
     events: list[tuple[str, object]] = []
 
@@ -154,7 +154,7 @@ def test_run_starts_grader_as_grader_user_then_drops_to_agent(
 
 
 def test_no_privilege_env_means_no_drop(monkeypatch: pytest.MonkeyPatch) -> None:
-    import auditgym.grader.privileges as privileges
+    import fintrace.grader.privileges as privileges
 
     monkeypatch.delenv(cli.AGENT_USER_ENV, raising=False)
     monkeypatch.setattr(privileges, "drop_to", lambda user: pytest.fail("dropped"))

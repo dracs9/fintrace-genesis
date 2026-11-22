@@ -1,4 +1,4 @@
-"""Exact currency conversion for AuditGym documents and postings."""
+"""Exact currency conversion for FinTrace documents and postings."""
 
 from decimal import (
     MAX_EMAX, MIN_EMIN, ROUND_HALF_EVEN, Context, Decimal, InvalidOperation, localcontext,

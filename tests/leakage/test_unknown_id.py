@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from auditgym.grader import GraderClient
+from fintrace.grader import GraderClient
 
 
 def test_deleted_and_invented_id_have_identical_errors(tmp_path: Path,
                                                       monkeypatch: pytest.MonkeyPatch) -> None:
-    core = pytest.importorskip("auditgym.env.core", reason="requires the Role 2 environment",
+    core = pytest.importorskip("fintrace.env.core", reason="requires the Role 2 environment",
                                exc_type=ModuleNotFoundError)
-    monkeypatch.setenv("AUDITGYM_SALT", "test-eval-salt")
+    monkeypatch.setenv("FINTRACE_SALT", "test-eval-salt")
     with GraderClient(tmp_path, log_dir=tmp_path / "logs") as client:
         env = core.AuditEnv(data_root=tmp_path, mode="train", grader=client)
         try:

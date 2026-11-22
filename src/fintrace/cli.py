@@ -1,4 +1,4 @@
-"""``auditgym`` command line (SPEC §15).
+"""``fintrace`` command line (SPEC §15).
 
 Commands owned by other roles are resolved lazily through ``ENTRY_POINTS``; when a module or
 function does not exist yet the command prints ``"<cmd>: not implemented yet"`` and exits 2
@@ -24,21 +24,21 @@ from .logging.trajectory import EpisodeSummary, TrajectoryWriter, write_summary
 SPLITS = {"train": 10_000, "dev": 20_000}
 NOT_IMPLEMENTED = 2
 # Docker privilege separation (SPEC §9.5): unset locally, set in the Dockerfile.
-GRADER_USER_ENV = "AUDITGYM_GRADER_USER"
-AGENT_USER_ENV = "AUDITGYM_AGENT_USER"
+GRADER_USER_ENV = "FINTRACE_GRADER_USER"
+AGENT_USER_ENV = "FINTRACE_AGENT_USER"
 
 # Other roles' functions. Adjust here when their modules land.
 ENTRY_POINTS = {
-    "grader": "auditgym.grader.client:GraderClient",                    # Role 3, SPEC §9.5
-    "validate": "auditgym.validate.independent_checker:validate_data",  # Role 4, SPEC §12
-    "transform": "auditgym.episode.transform:transform",                # Role 4, SPEC §13
-    "report": "auditgym.validate.report:build_report",                  # Role 4, SPEC §16
+    "grader": "fintrace.grader.client:GraderClient",                    # Role 3, SPEC §9.5
+    "validate": "fintrace.validate.independent_checker:validate_data",  # Role 4, SPEC §12
+    "transform": "fintrace.episode.transform:transform",                # Role 4, SPEC §13
+    "report": "fintrace.validate.report:build_report",                  # Role 4, SPEC §16
 }
 POLICIES = {  # Role 4, SPEC §10: module per policy, class found by its ``name`` attribute
-    "oracle": "auditgym.policies.oracle",
-    "random": "auditgym.policies.random_explorer",
-    "flag_all": "auditgym.policies.flag_all",
-    "reconciler": "auditgym.policies.reconciler",
+    "oracle": "fintrace.policies.oracle",
+    "random": "fintrace.policies.random_explorer",
+    "flag_all": "fintrace.policies.flag_all",
+    "reconciler": "fintrace.policies.reconciler",
 }
 POLICY_NAMES = {"oracle": "oracle", "random": "random_explorer", "flag_all": "flag_all",
                 "reconciler": "reconciler"}
@@ -119,7 +119,7 @@ def make_grader(data_root: Path) -> Any | None:
 
 
 def drop_agent_privileges() -> None:
-    """Switch this process to ``$AUDITGYM_AGENT_USER`` (irreversible); no-op when unset."""
+    """Switch this process to ``$FINTRACE_AGENT_USER`` (irreversible); no-op when unset."""
     user = os.environ.get(AGENT_USER_ENV)
     if user:
         from .grader.privileges import drop_to
@@ -207,9 +207,9 @@ def run_cached_episodes(data_root: Path, paths: Sequence[Path], policy_spec: str
             from .policies.oracle import OracleChannel, OraclePolicy
             channel = stack.enter_context(OracleChannel(data_root, run_as=os.getenv(GRADER_USER_ENV) or None))
         drop_agent_privileges()
-        salt = os.environ.pop("AUDITGYM_SALT", None)
+        salt = os.environ.pop("FINTRACE_SALT", None)
         if salt is not None:
-            stack.callback(os.environ.__setitem__, "AUDITGYM_SALT", salt)
+            stack.callback(os.environ.__setitem__, "FINTRACE_SALT", salt)
         policy = OraclePolicy(channel) if channel is not None else load_policy(policy_spec)
         name = str(getattr(policy, "name", policy_spec))
         slug = name.replace(":", "_").replace("/", "_")
@@ -293,7 +293,7 @@ def _run_subprocess(policy: str, args: argparse.Namespace) -> int:
     """
     load_policy(policy)
     for split in sorted(SPLITS):
-        code = subprocess.call([sys.executable, "-m", "auditgym.cli", "run", "--policy", policy,
+        code = subprocess.call([sys.executable, "-m", "fintrace.cli", "run", "--policy", policy,
                                 "--split", split, "--mode", "train", "--config", str(args.config),
                                 "--n", str(args.n), "--data", str(args.data), "--runs", str(args.runs)])
         if code:
@@ -302,7 +302,7 @@ def _run_subprocess(policy: str, args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="auditgym")
+    parser = argparse.ArgumentParser(prog="fintrace")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("generate", help="generate episodes for a split")

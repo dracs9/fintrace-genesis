@@ -1,7 +1,7 @@
 import pytest
 
-from auditgym.grader.normalize import IssueType
-from auditgym.grader.schema import parse_findings
+from fintrace.grader.normalize import IssueType
+from fintrace.grader.schema import parse_findings
 
 
 def test_normalization_before_matching() -> None:

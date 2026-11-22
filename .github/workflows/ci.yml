@@ -25,11 +25,11 @@ jobs:
         run: node --test tests/test_web_ui.mjs
       - name: Generate trajectories for the 50-episode leakage check
         working-directory: ${{ runner.temp }}
-        run: uv run --project "$GITHUB_WORKSPACE" auditgym all --n 25 --skip-tests
+        run: uv run --project "$GITHUB_WORKSPACE" fintrace all --n 25 --skip-tests
       - name: Check recorded trajectories
         env:
-          AUDITGYM_TEST_EPISODES: ${{ runner.temp }}/data
-          AUDITGYM_TEST_RUNS: ${{ runner.temp }}/runs
+          FINTRACE_TEST_EPISODES: ${{ runner.temp }}/data
+          FINTRACE_TEST_RUNS: ${{ runner.temp }}/runs
         run: uv run pytest -q tests/leakage/test_policy_trajectories.py
 
   docker:
@@ -38,6 +38,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build image
-        run: docker build -t auditgym .
+        run: docker build -t fintrace .
       - name: Smoke run offline
-        run: docker run --rm --network none --cpus 2 --memory 4g auditgym all
+        run: docker run --rm --network none --cpus 2 --memory 4g fintrace all

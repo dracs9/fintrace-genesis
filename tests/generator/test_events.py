@@ -3,8 +3,8 @@ from collections import Counter
 
 from numpy.random import Generator, PCG64
 
-from auditgym.world import build
-from auditgym.world.events import generate_events
+from fintrace.world import build
+from fintrace.world.events import generate_events
 from test_step0 import _preset
 
 

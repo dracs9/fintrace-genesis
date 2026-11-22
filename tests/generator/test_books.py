@@ -5,10 +5,10 @@ from decimal import Decimal
 
 from numpy.random import Generator, PCG64
 
-from auditgym.books import check_invariants, post
-from auditgym.world import Entity, World, build
-from auditgym.world.events import Allocation, Events, Invoice, Payment, generate_events
-from auditgym.world.fx import Market, Quote
+from fintrace.books import check_invariants, post
+from fintrace.world import Entity, World, build
+from fintrace.world.events import Allocation, Events, Invoice, Payment, generate_events
+from fintrace.world.fx import Market, Quote
 from test_step0 import _preset
 
 

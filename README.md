@@ -1,6 +1,6 @@
-# AuditGym
+# FinTrace
 
-AuditGym — учебная среда для ИИ-аудитора (кейс GENESIS 2026 FinTech).
+FinTrace — учебная среда для ИИ-аудитора (кейс GENESIS 2026 FinTech).
 
 Как это работает:
 1. **Генератор** создаёт по номеру `seed` вымышленную компанию за один месяц: бухгалтерскую книгу, счета, платежи и курсы валют. В данные специально подмешиваются ошибки четырёх типов.
@@ -24,8 +24,8 @@ GPU, интернет и платные API не нужны.
 ## 2. Установка
 
 ```shell
-git clone https://github.com/kwaiqs1/auditgym.git
-cd auditgym
+git clone https://github.com/kwaiqs1/fintrace.git
+cd fintrace
 uv sync
 ```
 
@@ -36,13 +36,13 @@ uv sync
 Весь конвейер одной командой: сгенерировать данные, запустить тесты, прогнать политики и собрать отчёт.
 
 ```shell
-uv run auditgym all
+uv run fintrace all
 ```
 
 Быстрая версия: маленькие эпизоды, без тестов.
 
 ```shell
-uv run auditgym all --config easy --n 2 --skip-tests
+uv run fintrace all --config easy --n 2 --skip-tests
 ```
 
 После `all: done` доступны траектории и сводки для четырёх политик на train и dev. Результат проверки данных записан в `reports/validation.json`.
@@ -51,15 +51,15 @@ uv run auditgym all --config easy --n 2 --skip-tests
 
 У автоматического эпизода 100 действий и 60 секунд после reset. Когда следующий вызов `step` приходит после истечения времени, среда завершает эпизод с пустым ответом. Для принудительной остановки внешнего агента, который перестал вызывать `step`, нужен watchdog процесса. В ручном Studio действует бюджет действий, чтобы оператор мог читать документы между запросами.
 
-### AuditGym Studio
+### FinTrace Studio
 
 Из корня репозитория запустите локальный веб-интерфейс одной командой.
 
 ```shell
-uv run python -m auditgym.web_server
+uv run python -m fintrace.web_server
 ```
 
-Откройте [AuditGym Studio](http://127.0.0.1:8765). Если uv установлен через pip и Windows не находит команду `uv`, используйте `python -m uv run python -m auditgym.web_server`. Статика и шрифты входят в репозиторий. После установки зависимостей интерфейс работает офлайн. Порт можно задать через `--port`.
+Откройте [FinTrace Studio](http://127.0.0.1:8765). Если uv установлен через pip и Windows не находит команду `uv`, используйте `python -m uv run python -m fintrace.web_server`. Статика и шрифты входят в репозиторий. После установки зависимостей интерфейс работает офлайн. Порт можно задать через `--port`.
 
 В **Environment** выберите seed, сложность и режим. Первый экран загружает 50 проводок за один шаг. Поиск по текущей странице бесплатен. **Find next** запрашивает следующие страницы до первого совпадения или конца бюджета. Кнопка **+** добавляет ссылку в доказательства, а клик по ID открывает инспектор, где запись можно также добавить в `affected_ids`. Сохраните находки и нажмите **Submit findings** для оценки.
 
@@ -71,19 +71,19 @@ uv run python -m auditgym.web_server
 
 | Команда | Что делает |
 |---|---|
-| `uv run auditgym generate --split train --n 10 --config medium` | Генерирует 10 эпизодов в `data/train/` |
-| `uv run auditgym run --policy <политика> --split dev` | Прогоняет политику на эпизодах, пишет результаты в `runs/` |
-| `uv run auditgym validate --data data/` | Независимая проверка сгенерированных данных |
-| `uv run auditgym transform --src ... --dst ... --permute-seed 7 --id-salt x` | Перемешивает строки и переименовывает ID эпизода (метаморфные проверки) |
-| `uv run auditgym report --runs runs/ --data data/` | Пересчитывает результаты из траекторий и обновляет отчёты |
-| `uv run auditgym all` | Всё по порядку |
+| `uv run fintrace generate --split train --n 10 --config medium` | Генерирует 10 эпизодов в `data/train/` |
+| `uv run fintrace run --policy <политика> --split dev` | Прогоняет политику на эпизодах, пишет результаты в `runs/` |
+| `uv run fintrace validate --data data/` | Независимая проверка сгенерированных данных |
+| `uv run fintrace transform --src ... --dst ... --permute-seed 7 --id-salt x` | Перемешивает строки и переименовывает ID эпизода (метаморфные проверки) |
+| `uv run fintrace report --runs runs/ --data data/` | Пересчитывает результаты из траекторий и обновляет отчёты |
+| `uv run fintrace all` | Всё по порядку |
 
 Полезные параметры:
 - `--split train|dev` выбирает набор эпизодов: `train` использует seed 10000–10009, `dev` — seed 20000–20009.
 - `--config easy|medium|hard|default` задаёт сложность, настройки лежат в [configs/](configs/).
 - `--mode eval` в `run` запускает режим проверки: агент всегда получает награду 0, публичная сводка оставляет метрики пустыми, а настоящая награда пишется в лог оценщика `logs/grader.jsonl`.
 
-Справка по любой команде: `uv run auditgym <команда> --help`.
+Справка по любой команде: `uv run fintrace <команда> --help`.
 
 ---
 
@@ -148,14 +148,14 @@ class MyAgent:
 Сохраните пример как `my_agent.py` в корне репозитория. CLI передаёт в `reset` публичный seed политики. Во время запуска модуль видит открытое наблюдение, а `act` возвращает один вызов инструмента.
 
 ```shell
-uv run auditgym run --policy my_agent:MyAgent --split dev --n 10
+uv run fintrace run --policy my_agent:MyAgent --split dev --n 10
 ```
 
 Результаты:
 - `runs/<имя>/trajectories.jsonl` — каждый шаг: действие, наблюдение, награда;
 - `runs/<имя>/summary.jsonl` — итог по каждому эпизоду: precision, recall, F1, награда, число шагов.
 
-Есть и обёртка под Gymnasium: [src/auditgym/env/gym_adapter.py](src/auditgym/env/gym_adapter.py).
+Есть и обёртка под Gymnasium: [src/fintrace/env/gym_adapter.py](src/fintrace/env/gym_adapter.py).
 
 ### Инструменты агента
 
@@ -224,7 +224,7 @@ uv run pytest -q tests/grader tests/attacks tests/leakage   # оценщик, а
 uv run pytest -q tests/validate tests/metamorphic tests/e2e  # интеграция
 ```
 
-> Если на macOS два теста изоляции реагируют на системный путь `/private/var/…`, задайте отдельный каталог: `mkdir -p "$HOME/.cache/auditgym-tmp"` и `TMPDIR="$HOME/.cache/auditgym-tmp" uv run pytest -q`. На Windows при ошибке uv trampoline используйте `uv run python -m pytest -q`.
+> Если на macOS два теста изоляции реагируют на системный путь `/private/var/…`, задайте отдельный каталог: `mkdir -p "$HOME/.cache/fintrace-tmp"` и `TMPDIR="$HOME/.cache/fintrace-tmp" uv run pytest -q`. На Windows при ошибке uv trampoline используйте `uv run python -m pytest -q`.
 
 ---
 
@@ -234,7 +234,7 @@ uv run pytest -q tests/validate tests/metamorphic tests/e2e  # интеграц�
 make docker
 ```
 
-Команда собирает образ и запускает `auditgym all` без сети (`--network none`), с 2 CPU и 4 ГБ памяти, то есть в условиях проверки жюри.
+Команда собирает образ и запускает `fintrace all` без сети (`--network none`), с 2 CPU и 4 ГБ памяти, то есть в условиях проверки жюри.
 
 Внутри контейнера процессы работают от разных пользователей:
 - оценщик работает под пользователем `grader` и только он может читать `private/`;
@@ -250,11 +250,11 @@ make docker
 
 | Папка | Что внутри | Роль |
 |---|---|---|
-| `src/auditgym/world/`, `books/`, `injectors/`, `episode/serialize.py`, `configs/` | Генератор компании, проводки, внедрение ошибок | 1 Генератор |
-| `src/auditgym/env/`, `logging/`, `cli.py`, `Dockerfile`, `Makefile` | Среда, инструменты, траектории, CLI | 2 Среда |
-| `src/auditgym/grader/`, `schemas/` | Оценщик, схемы, сканер утечек | 3 Оценщик |
-| `src/auditgym/validate/`, `policies/`, `episode/transform.py`, `reports/` | Валидатор, базовые политики, отчёты | 4 Интегратор |
-| `src/auditgym/common/`, `SPEC.md` | Общий код и спецификация, правки только по согласованию | Все |
+| `src/fintrace/world/`, `books/`, `injectors/`, `episode/serialize.py`, `configs/` | Генератор компании, проводки, внедрение ошибок | 1 Генератор |
+| `src/fintrace/env/`, `logging/`, `cli.py`, `Dockerfile`, `Makefile` | Среда, инструменты, траектории, CLI | 2 Среда |
+| `src/fintrace/grader/`, `schemas/` | Оценщик, схемы, сканер утечек | 3 Оценщик |
+| `src/fintrace/validate/`, `policies/`, `episode/transform.py`, `reports/` | Валидатор, базовые политики, отчёты | 4 Интегратор |
+| `src/fintrace/common/`, `SPEC.md` | Общий код и спецификация, правки только по согласованию | Все |
 
 ## 10. Демо на 2–3 минуты
 
@@ -263,7 +263,7 @@ make docker
 1. **0:00–0:45.** Из корня репозитория запустите быстрый конвейер. Покажите число проверенных эпизодов и сводки наград.
 
    ```shell
-   uv run auditgym all --config medium --n 3 --skip-tests --data runs/demo-data --runs runs/demo
+   uv run fintrace all --config medium --n 3 --skip-tests --data runs/demo-data --runs runs/demo
    ```
 
 2. **0:45–1:30.** В `runs/demo/oracle-dev-train/trajectories.jsonl` покажите стартовое наблюдение, чтение по ID и терминальный `submit`. Сравните со сводкой `runs/demo/flag_all-dev-train/summary.jsonl` и разберите, какое доказательство нужно для одного TP.
@@ -280,21 +280,21 @@ make docker
 Команда запускает все четыре политики на medium с seed 10000–10009, 20000–20009 и 90000–90019. Она сохраняет сводки и траектории, а затем формирует оба отчёта.
 
 ```shell
-uv run python -m auditgym.validate.report --data data --runs runs/benchmark --out reports/baselines.md
+uv run python -m fintrace.validate.report --data data --runs runs/benchmark --out reports/baselines.md
 ```
 
-`auditgym all` и демо пересобирают текущие отчёты в `reports/` по своим выборкам. Команда выше восстанавливает отчёт по 40 эпизодам. Версия генератора 1.0.1 меняет ID эпизодов. Используйте каталог с эпизодами текущей версии при сравнении результатов. [Базовые политики](reports/baselines.md) · [Устройство среды](DESIGN.md)
+`fintrace all` и демо пересобирают текущие отчёты в `reports/` по своим выборкам. Команда выше восстанавливает отчёт по 40 эпизодам. Версия генератора 1.0.1 меняет ID эпизодов. Используйте каталог с эпизодами текущей версии при сравнении результатов. [Базовые политики](reports/baselines.md) · [Устройство среды](DESIGN.md)
 
 ---
 
 ## 12. Частые вопросы
 
-**Почему повторный запуск даёт те же данные?** Вся случайность выводится из `seed`, поэтому одинаковые `seed`, конфиг, версия и соль дают побайтово одинаковые файлы. Чтобы данные нельзя было заранее подобрать перебором seed, задайте секретную соль: `AUDITGYM_SALT=... uv run auditgym generate ...`.
+**Почему повторный запуск даёт те же данные?** Вся случайность выводится из `seed`, поэтому одинаковые `seed`, конфиг, версия и соль дают побайтово одинаковые файлы. Чтобы данные нельзя было заранее подобрать перебором seed, задайте секретную соль: `FINTRACE_SALT=... uv run fintrace generate ...`.
 
 **Куда пишутся логи оценщика?** В `logs/grader.jsonl`. Агенту этот файл недоступен.
 
 **Как проверить, что в траекториях нет утечек?**
-`uv run python -m auditgym.grader.leakage data/dev/<episode_id> runs/<run>/trajectories.jsonl`
+`uv run python -m fintrace.grader.leakage data/dev/<episode_id> runs/<run>/trajectories.jsonl`
 
 ## Лицензия
 

@@ -8,13 +8,13 @@ from typing import Any
 
 import pytest
 
-from auditgym.env.core import AuditEnv, expected_episode_id, load_config
-from auditgym.episode.serialize import generate_episode
-from auditgym.episode.transform import transform
-from auditgym.grader.client import GraderClient
-from auditgym.policies import Policy, run_episode
-from auditgym.policies.oracle import OracleChannel, OraclePolicy
-from auditgym.policies.reconciler import Reconciler
+from fintrace.env.core import AuditEnv, expected_episode_id, load_config
+from fintrace.episode.serialize import generate_episode
+from fintrace.episode.transform import transform
+from fintrace.grader.client import GraderClient
+from fintrace.policies import Policy, run_episode
+from fintrace.policies.oracle import OracleChannel, OraclePolicy
+from fintrace.policies.reconciler import Reconciler
 
 
 @dataclass(frozen=True)
@@ -92,7 +92,7 @@ def oracles(pair: EpisodePair, operators: tuple[Operators, Operators]) -> tuple[
 
 
 def test_m1_validator_accepts_transformed_episode(pair: EpisodePair) -> None:
-    from auditgym.validate.independent_checker import validate_episode
+    from fintrace.validate.independent_checker import validate_episode
 
     validate_episode(pair.transformed)
 

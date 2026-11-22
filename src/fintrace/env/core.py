@@ -6,7 +6,7 @@ Invariants:
 * every observation is ``{"ok","result","error","steps_used","steps_left"}`` and is a fresh
   canonical-JSON round-tripped value, so callers cannot mutate env state through it;
 * agent-visible errors are only the fixed codes/messages of SPEC §8.4; unexpected internal
-  exceptions become ``BAD_ARGS`` and are logged to ``auditgym.env`` (never shown to the agent);
+  exceptions become ``BAD_ARGS`` and are logged to ``fintrace.env`` (never shown to the agent);
 * intermediate rewards are 0.0; the terminal reward comes from the grader in ``train`` and is
   0.0 in ``eval``.
 Deterministic: same episode + same actions -> identical observations and rewards (R2).
@@ -37,7 +37,7 @@ TASK = ("Audit the books for the period. Find errors of types [" + ", ".join(FIN
         + "]. Submit findings with evidence.")
 CONFIG_ROOT = Path(__file__).resolve().parents[3] / "configs"
 
-_log = logging.getLogger("auditgym.env")
+_log = logging.getLogger("fintrace.env")
 
 
 class GraderClient(Protocol):
@@ -70,7 +70,7 @@ def load_config(config: dict | str, config_root: Path | None = None) -> dict[str
         return _fresh(config)
     if not isinstance(config, str) or not config.isidentifier():
         raise ValueError("unknown config preset")
-    root = config_root or Path(os.environ.get("AUDITGYM_CONFIGS", str(CONFIG_ROOT)))
+    root = config_root or Path(os.environ.get("FINTRACE_CONFIGS", str(CONFIG_ROOT)))
     path = root / ("default.yaml" if config == "default" else f"difficulty/{config}.yaml")
     if not path.is_file():
         raise ValueError("unknown config preset")
@@ -82,7 +82,7 @@ def expected_episode_id(seed: int, config: dict[str, Any]) -> str:
     config_bytes = json.dumps(config, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
                               allow_nan=False).encode("utf-8")
     config_hash = hashlib.sha256(config_bytes).hexdigest()
-    salt = os.environ.get("AUDITGYM_SALT", "")
+    salt = os.environ.get("FINTRACE_SALT", "")
     digest = hashlib.sha256(f"{seed}{config_hash}{GENERATOR_VERSION}{salt}".encode()).hexdigest()
     return "ep_" + digest[:12]
 

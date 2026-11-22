@@ -1,4 +1,4 @@
-"""Local operator console for AuditGym. Start from the checkout with python -m auditgym.web_server."""
+"""Local operator console for FinTrace. Start from the checkout with python -m fintrace.web_server."""
 from __future__ import annotations
 
 import argparse
@@ -58,7 +58,7 @@ class _Episode:
     """Own one environment, grader process and isolated single-submission operator log."""
 
     def __init__(self, stack: ExitStack, mode: Mode, *, interactive: bool = False) -> None:
-        root = Path(stack.enter_context(TemporaryDirectory(prefix="auditgym-studio-")))
+        root = Path(stack.enter_context(TemporaryDirectory(prefix="fintrace-studio-")))
         self.data = root / "data"
         self.log = root / "operator" / "grader.jsonl"
         grader = stack.enter_context(GraderClient(self.data, log_dir=self.log.parent))
@@ -295,7 +295,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     with server(Path.cwd(), args.port) as http:
-        print(f"AuditGym Studio  http://127.0.0.1:{http.server_port}", flush=True)
+        print(f"FinTrace Studio  http://127.0.0.1:{http.server_port}", flush=True)
         try:
             http.serve_forever()
         except KeyboardInterrupt:

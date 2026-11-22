@@ -1,7 +1,7 @@
 from dataclasses import replace
 
-from auditgym.grader.matcher import match
-from auditgym.grader.normalize import Finding, Issue, IssueType
+from fintrace.grader.matcher import match
+from fintrace.grader.normalize import Finding, Issue, IssueType
 
 
 def test_augmenting_path_reassigns_first_hit() -> None:

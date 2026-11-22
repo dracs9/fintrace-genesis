@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from auditgym.env.core import AuditEnv
-from auditgym.grader.client import GraderClient
-from auditgym.grader.schema import parse_findings
-from auditgym.policies import Policy, load_policy, run_episode
-from auditgym.policies.base import Record, submit
-from auditgym.policies.oracle import OracleChannel, OraclePolicy
-from auditgym.policies.reconciler import Reconciler
+from fintrace.env.core import AuditEnv
+from fintrace.grader.client import GraderClient
+from fintrace.grader.schema import parse_findings
+from fintrace.policies import Policy, load_policy, run_episode
+from fintrace.policies.base import Record, submit
+from fintrace.policies.oracle import OracleChannel, OraclePolicy
+from fintrace.policies.reconciler import Reconciler
 
 TINY = Path(__file__).resolve().parents[1] / 'env' / 'fixtures' / 'ep_tiny'
 CLEAN = Path(__file__).resolve().parents[1] / 'generator' / 'fixtures' / 'step0'

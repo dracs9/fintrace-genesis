@@ -1,4 +1,4 @@
-"""Public observation/action interfaces for AuditGym baseline policies."""
+"""Public observation/action interfaces for FinTrace baseline policies."""
 
 from dataclasses import dataclass
 from typing import Any, Protocol

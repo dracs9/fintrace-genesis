@@ -12,7 +12,7 @@ wheels = [
 ]
 
 [[package]]
-name = "auditgym"
+name = "fintrace"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

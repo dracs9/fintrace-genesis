@@ -1,14 +1,14 @@
-# AuditGym Studio — как работает и что показать на видео
+# FinTrace Studio — как работает и что показать на видео
 
 ## Запуск
 
-Из корня репозитория `auditgym` выполните:
+Из корня репозитория `fintrace` выполните:
 
 ```powershell
-uv run python -m auditgym.web_server
+uv run python -m fintrace.web_server
 ```
 
-Откройте [локальный Studio](http://127.0.0.1:8765). Если Windows не находит установленный через pip `uv`, используйте `python -m uv run python -m auditgym.web_server`. После установки зависимостей сервер, браузерные ресурсы и шрифты работают офлайн. Для демо выберите `Seed = 20000`, `Difficulty = medium`, `Mode = train`. Значения ниже получены с пустой `AUDITGYM_SALT`.
+Откройте [локальный Studio](http://127.0.0.1:8765). Если Windows не находит установленный через pip `uv`, используйте `python -m uv run python -m fintrace.web_server`. После установки зависимостей сервер, браузерные ресурсы и шрифты работают офлайн. Для демо выберите `Seed = 20000`, `Difficulty = medium`, `Mode = train`. Значения ниже получены с пустой `FINTRACE_SALT`.
 
 ## Что происходит за экраном
 

@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 
 from env_helpers import TINY_ID, FakeGraderClient, check_info, check_obs
-from auditgym.env import AuditEnv
-from auditgym.env import core
-from auditgym.env.core import FINDING_TYPES, TASK, canonical_json
+from fintrace.env import AuditEnv
+from fintrace.env import core
+from fintrace.env.core import FINDING_TYPES, TASK, canonical_json
 
 LIST_INV = {"tool": "list_records", "args": {"table": "invoices"}}
 

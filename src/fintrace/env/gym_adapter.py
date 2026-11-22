@@ -26,7 +26,7 @@ def _dumps(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-class AuditGymEnv(gymnasium.Env):
+class FinTraceEnv(gymnasium.Env):
     """``gymnasium.Env`` over :class:`AuditEnv` with JSON-string actions and observations."""
 
     metadata = {"render_modes": []}

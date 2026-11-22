@@ -13,8 +13,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from auditgym.books.discrepancies import verify
-from auditgym.episode.serialize import generate_episode
+from fintrace.books.discrepancies import verify
+from fintrace.episode.serialize import generate_episode
 from test_step0 import _preset, _read_json, _sha256_tree
 
 
@@ -147,14 +147,14 @@ class FinalGeneratorTests(unittest.TestCase):
     def test_size_regression_and_sha256(self) -> None:
         cfg = dict(_preset("hard"), n_issues=[4, 4], clean_probability=0,
                    interactions={"fx_partial_boundary": 1, "duplicate_with_payment": 1})
-        with TemporaryDirectory() as dest, patch.dict("os.environ", {"AUDITGYM_SALT": ""}):
+        with TemporaryDirectory() as dest, patch.dict("os.environ", {"FINTRACE_SALT": ""}):
             first = generate_episode(2, cfg, Path(dest) / "first")
             count, _, issues = self.check_disk(first)
             self.assertLessEqual(count, 200)
             self.assertEqual(issues, 4)
             replay = generate_episode(2, {k: cfg[k] for k in sorted(cfg, reverse=True)}, Path(dest) / "replay")
             self.assertEqual(_sha256_tree(first), _sha256_tree(replay))
-            with patch.dict("os.environ", {"AUDITGYM_SALT": "second-run"}):
+            with patch.dict("os.environ", {"FINTRACE_SALT": "second-run"}):
                 other = generate_episode(2, cfg, Path(dest) / "other")
             for name in ("ledger.csv", "invoices.jsonl", "payments.jsonl"):
                 self.assertNotEqual((first / "open" / name).read_bytes(), (other / "open" / name).read_bytes())
@@ -171,14 +171,14 @@ class FinalGeneratorTests(unittest.TestCase):
     def test_replay_in_separate_interpreters(self) -> None:
         project = Path(__file__).resolve().parents[2]
         code = ("import json,sys; from pathlib import Path; "
-                "from auditgym.episode.serialize import generate_episode; "
+                "from fintrace.episode.serialize import generate_episode; "
                 "generate_episode(13, json.loads(sys.argv[1]), Path(sys.argv[2]))")
         with TemporaryDirectory() as dest:
             outputs = []
             for hash_seed in ("19", "987"):
                 out = Path(dest) / hash_seed
                 env = dict(os.environ, PYTHONHASHSEED=hash_seed, PYTHONPATH=str(project / "src"),
-                           AUDITGYM_SALT="replay", PYTHONDONTWRITEBYTECODE="1")
+                           FINTRACE_SALT="replay", PYTHONDONTWRITEBYTECODE="1")
                 subprocess.run([sys.executable, "-c", code, json.dumps(_preset("medium")), str(out)],
                                env=env, check=True)
                 outputs.append(_sha256_tree(out))

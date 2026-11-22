@@ -12,7 +12,7 @@ def load_policy(spec: str, *, channel: OracleChannel | None = None) -> Policy:
     """Load a built-in or pkg.module:Class, passing the capability only to the built-in oracle."""
     if spec == 'oracle':
         return OraclePolicy(channel)
-    from auditgym.cli import load_policy as load_cli_policy
+    from fintrace.cli import load_policy as load_cli_policy
 
     obj = load_cli_policy('random' if spec == 'random_explorer' else spec)
     if not isinstance(getattr(obj, 'name', None), str) or not all(

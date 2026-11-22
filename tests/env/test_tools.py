@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 
 from env_helpers import check_obs
-from auditgym.env import AuditEnv
-from auditgym.env.errors import MESSAGES
-from auditgym.env.pagination import encode_cursor
+from fintrace.env import AuditEnv
+from fintrace.env.errors import MESSAGES
+from fintrace.env.pagination import encode_cursor
 
 
 def _call(env: AuditEnv, tool: str, **args: object) -> dict:
@@ -210,13 +210,13 @@ def test_every_error_consumes_a_step(started: AuditEnv) -> None:
 
 def test_internal_exception_becomes_bad_args(started: AuditEnv, monkeypatch: pytest.MonkeyPatch,
                                              caplog: pytest.LogCaptureFixture) -> None:
-    import auditgym.env.core as core
+    import fintrace.env.core as core
 
     def boom(data, args):  # noqa: ANN001
         raise KeyError("/secret/private/truth.json")
 
     monkeypatch.setattr(core, "READ_TOOLS", {**core.READ_TOOLS, "get_document": boom})
-    with caplog.at_level("ERROR", logger="auditgym.env"):
+    with caplog.at_level("ERROR", logger="fintrace.env"):
         obs, *_ = started.step({"tool": "get_document", "args": {"doc_id": "D-7q2x9a"}})
     assert obs["error"] == {"code": "BAD_ARGS", "message": "invalid arguments"}
     assert "secret" not in json.dumps(obs)

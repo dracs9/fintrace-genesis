@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from env_helpers import FakeGraderClient, ScriptedPolicy, check_info, check_obs, leaks
-from auditgym.env import AuditEnv
-from auditgym.env.core import expected_episode_id, load_config
+from fintrace.env import AuditEnv
+from fintrace.env.core import expected_episode_id, load_config
 
 SEEDS = (90_001, 90_002)
 

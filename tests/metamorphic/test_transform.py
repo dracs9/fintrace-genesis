@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from auditgym.episode.transform import transform
+from fintrace.episode.transform import transform
 
 
 _FIXTURE = Path(__file__).resolve().parents[1] / "env/fixtures/ep_tiny"

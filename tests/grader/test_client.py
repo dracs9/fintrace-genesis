@@ -4,7 +4,7 @@ from typing import Any, IO
 
 import pytest
 
-from auditgym.grader import GraderClient, grade
+from fintrace.grader import GraderClient, grade
 
 
 def test_spawn_log_and_public_projection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,4 +1,4 @@
-"""Trusted offline measurement and reporting for AuditGym (§11, §16)."""
+"""Trusted offline measurement and reporting for FinTrace (§11, §16)."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ from pathlib import Path
 from statistics import fmean, pstdev
 from typing import Any
 
-from auditgym.grader.normalize import Finding, IssueType
-from auditgym.grader.schema import parse_findings
-from auditgym.grader.service import grade
-from auditgym.logging.trajectory import EpisodeSummary, read_jsonl
+from fintrace.grader.normalize import Finding, IssueType
+from fintrace.grader.schema import parse_findings
+from fintrace.grader.service import grade
+from fintrace.logging.trajectory import EpisodeSummary, read_jsonl
 
 SAMPLES = (("train", 10_000, 10), ("dev", 20_000, 10), ("fresh", 90_000, 20))
 POLICIES = ("oracle", "reconciler", "flag_all", "random")
@@ -256,8 +256,8 @@ def build_report(runs: Path, out: Path, data: Path | None = None) -> None:
 
 def main() -> None:
     """Reproduce the medium 10+10+20 evaluation with one fresh policy process per split."""
-    from auditgym.cli import run_cached_episodes
-    from auditgym.env.core import ensure_episode, load_config
+    from fintrace.cli import run_cached_episodes
+    from fintrace.env.core import ensure_episode, load_config
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=Path("data"))
@@ -275,7 +275,7 @@ def main() -> None:
             run_cached_episodes(root, paths, args.measure[1], args.runs, split=split)
             return
         for policy in POLICIES:
-            subprocess.run([sys.executable, "-m", "auditgym.validate.report", "--data", str(args.data),
+            subprocess.run([sys.executable, "-m", "fintrace.validate.report", "--data", str(args.data),
                             "--runs", str(args.runs), "--measure", split, policy], check=True)
     build_report(args.runs, args.out, args.data)
 

@@ -11,8 +11,8 @@ from typing import Any
 import pytest
 import yaml
 
-from auditgym.episode.serialize import generate_episode
-from auditgym.validate.independent_checker import InvalidEpisode, validate_data, validate_episode
+from fintrace.episode.serialize import generate_episode
+from fintrace.validate.independent_checker import InvalidEpisode, validate_data, validate_episode
 
 ROOT = Path(__file__).resolve().parents[2]
 Record = dict[str, Any]
@@ -58,7 +58,7 @@ def write_table(path: Path, rows: list[Record]) -> None:
 @pytest.fixture
 def episode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Fixed hard episode containing both interactions, nonzero fees and all four issue types."""
-    monkeypatch.setenv("AUDITGYM_SALT", "")
+    monkeypatch.setenv("FINTRACE_SALT", "")
     config = preset("hard")
     config.update(n_issues=[10, 10], clean_probability=0,
                   interactions={"duplicate_with_payment": 1, "fx_partial_boundary": 1})
@@ -68,7 +68,7 @@ def episode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 @pytest.fixture
 def clean(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Build an untouched book with real FX, bank fees, returns and historical allocations."""
-    monkeypatch.setenv("AUDITGYM_SALT", "")
+    monkeypatch.setenv("FINTRACE_SALT", "")
     config = preset("hard")
     config.update(n_issues=[0, 0], clean_probability=1)
     return generate_episode(0, config, tmp_path / "clean")
@@ -143,7 +143,7 @@ def test_ia_requires_quote_in_its_own_cutoff_proof(episode: Path) -> None:
 
 
 def test_t2_unapplied_cash_requires_unique_intended_invoice(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AUDITGYM_SALT", "")
+    monkeypatch.setenv("FINTRACE_SALT", "")
     config = preset("medium")
     config.update(n_issues=[1, 1], clean_probability=0, enabled_types=["payment_misallocation"],
                   interactions={"duplicate_with_payment": 0, "fx_partial_boundary": 0})

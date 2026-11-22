@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://auditgym.local/schemas/observation.schema.json",
-  "title": "AuditGym observation (DRAFT by Role 2, to be moved to schemas/ by Role 3)",
+  "$id": "https://fintrace.local/schemas/observation.schema.json",
+  "title": "FinTrace observation (DRAFT by Role 2, to be moved to schemas/ by Role 3)",
   "type": "object",
   "required": ["ok", "result", "error", "steps_used", "steps_left"],
   "additionalProperties": false,

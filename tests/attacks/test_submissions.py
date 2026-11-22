@@ -5,9 +5,9 @@ from typing import Any
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from auditgym.grader.normalize import Issue, IssueType
-from auditgym.grader.result import GradeResult
-from auditgym.grader.reward import score
+from fintrace.grader.normalize import Issue, IssueType
+from fintrace.grader.result import GradeResult
+from fintrace.grader.reward import score
 
 EPISODE = "ep_fedcba987654"
 

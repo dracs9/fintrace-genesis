@@ -8,9 +8,9 @@ from pathlib import Path
 from types import TracebackType
 from typing import Self
 
-from auditgym.grader.client import encode
-from auditgym.grader.privileges import drop_to
-from auditgym.grader.schema import parse_truth
+from fintrace.grader.client import encode
+from fintrace.grader.privileges import drop_to
+from fintrace.grader.schema import parse_truth
 
 from .base import Record, finding
 

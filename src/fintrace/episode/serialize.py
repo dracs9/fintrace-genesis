@@ -1,4 +1,4 @@
-"""Serialize generated AuditGym books and the original on-disk integration fixture."""
+"""Serialize generated FinTrace books and the original on-disk integration fixture."""
 
 import calendar
 import csv
@@ -128,7 +128,7 @@ def generate_fixture(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
         raise ValueError("period must be one calendar month")
 
     config_hash = hashlib.sha256(_json_bytes(config)).hexdigest()
-    salt = os.environ.get("AUDITGYM_SALT", "")
+    salt = os.environ.get("FINTRACE_SALT", "")
     identity = f"{seed}{config_hash}{_GENERATOR_VERSION}{salt}".encode("utf-8")
     episode_id = "ep_" + hashlib.sha256(identity).hexdigest()[:12]
     tables, counts = _fixture_tables(start, config["currencies"])
@@ -203,7 +203,7 @@ def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
     """Generate deterministic public records and private, ID-resolved truth and provenance."""
     version = "1.0.1"
     config_hash = hashlib.sha256(_json_bytes(config)).hexdigest()
-    salt = os.environ.get("AUDITGYM_SALT", "")
+    salt = os.environ.get("FINTRACE_SALT", "")
     source = Streams(seed, config_hash, version, salt)
     used: dict[str, Generator] = {}
 

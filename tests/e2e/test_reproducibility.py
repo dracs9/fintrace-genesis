@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from auditgym.cli import main
-from auditgym.env.core import load_config
-from auditgym.episode.serialize import generate_episode
-from auditgym.logging.trajectory import read_jsonl
+from fintrace.cli import main
+from fintrace.env.core import load_config
+from fintrace.episode.serialize import generate_episode
+from fintrace.logging.trajectory import read_jsonl
 
 
 def _tree_digest(directory: Path) -> str:
@@ -23,7 +23,7 @@ def _tree_digest(directory: Path) -> str:
 
 def test_r1_salted_episode_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = load_config("hard")
-    monkeypatch.setenv("AUDITGYM_SALT", "reproducibility-test")
+    monkeypatch.setenv("FINTRACE_SALT", "reproducibility-test")
     first = generate_episode(90_925, config, tmp_path / "first")
     second = generate_episode(90_925, config, tmp_path / "second")
     assert _tree_digest(first) == _tree_digest(second)
@@ -31,7 +31,7 @@ def test_r1_salted_episode_directory(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
 def test_r2_oracle_trajectory_and_reward(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("AUDITGYM_SALT", "replay-oracle-test")
+    monkeypatch.setenv("FINTRACE_SALT", "replay-oracle-test")
     command = ["run", "--policy", "oracle", "--split", "dev", "--config", "medium", "--n", "4"]
     assert main(command) == 0
     run_dir = tmp_path / "runs/oracle-dev-train"
@@ -51,10 +51,10 @@ def test_external_policy_gets_public_seed_and_no_salt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("AUDITGYM_SALT", "external-policy-test")
+    monkeypatch.setenv("FINTRACE_SALT", "external-policy-test")
     (tmp_path / "public_seed_policy.py").write_text(
         "import os\n"
-        "assert 'AUDITGYM_SALT' not in os.environ\n"
+        "assert 'FINTRACE_SALT' not in os.environ\n"
         "class External:\n"
         "    name = 'external:v1'\n"
         "    def reset(self, first_obs: dict, *, seed: int) -> None:\n"

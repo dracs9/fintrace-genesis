@@ -1,4 +1,4 @@
-"""Offline independent checks of serialized AuditGym episodes (SPEC §§3–7, 12)."""
+"""Offline independent checks of serialized FinTrace episodes (SPEC §§3–7, 12)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
-from auditgym.common.money import convert, parse_rate
+from fintrace.common.money import convert, parse_rate
 
 Record = dict[str, Any]
 Post = tuple[datetime, str, int, str, str | None, str | None]

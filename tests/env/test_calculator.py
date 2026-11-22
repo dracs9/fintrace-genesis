@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from auditgym.env.calculator import evaluate
-from auditgym.env.core import AuditEnv
-from auditgym.env.errors import EnvError
+from fintrace.env.calculator import evaluate
+from fintrace.env.core import AuditEnv
+from fintrace.env.errors import EnvError
 
 GOOD = [
     ("1+2", "3"),

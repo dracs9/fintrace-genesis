@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from numpy.random import Generator, PCG64
 
-from auditgym.world.fx import build_market
+from fintrace.world.fx import build_market
 
 
 class MarketTests(unittest.TestCase):

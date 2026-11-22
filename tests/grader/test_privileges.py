@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from auditgym.grader.privileges import drop_to
+from fintrace.grader.privileges import drop_to
 
 
 @pytest.fixture

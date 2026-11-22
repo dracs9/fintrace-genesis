@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from auditgym.grader.leakage import LeakIndex, scan_trajectory
+from fintrace.grader.leakage import LeakIndex, scan_trajectory
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def episode(tmp_path: Path) -> Path:
     "hidden memo", "local-test-salt", {"expected_amount_minor": 42},
 ])
 def test_nested_disclosure(episode: Path, leak: object, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AUDITGYM_SALT", "local-test-salt")
+    monkeypatch.setenv("FINTRACE_SALT", "local-test-salt")
     index = LeakIndex.from_episode(episode)
     with pytest.raises(ValueError, match="^restricted data in trajectory$"):
         index.check({"result": [{"nested": leak}]})

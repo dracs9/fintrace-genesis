@@ -1,6 +1,6 @@
 """Seeded baseline using only record handles returned by public tools."""
 
-from auditgym.common.rng import Streams
+from fintrace.common.rng import Streams
 
 from .base import Record, finding, page, submit
 

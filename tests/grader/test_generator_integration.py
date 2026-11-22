@@ -7,18 +7,18 @@ from pathlib import Path
 import pytest
 import yaml
 
-from auditgym.grader import GraderClient
-from auditgym.grader.leakage import LeakIndex
+from fintrace.grader import GraderClient
+from fintrace.grader.leakage import LeakIndex
 
 
 def test_oracle_on_50_generated_episodes_and_eval_salt(tmp_path: Path,
                                                        monkeypatch: pytest.MonkeyPatch) -> None:
-    generator = pytest.importorskip("auditgym.episode.serialize", reason="requires Role 1",
+    generator = pytest.importorskip("fintrace.episode.serialize", reason="requires Role 1",
                                      exc_type=ModuleNotFoundError)
     config_path = Path(generator.__file__).resolve().parents[3] / "configs/default.yaml"
     config = yaml.safe_load(config_path.read_bytes())
     seen_types: set[str] = set()
-    monkeypatch.setenv("AUDITGYM_SALT", "test-eval-salt")
+    monkeypatch.setenv("FINTRACE_SALT", "test-eval-salt")
     with GraderClient(tmp_path, log_dir=tmp_path / "logs") as client:
         for seed in range(90000, 90050):
             episode_dir = tmp_path / f"generated_{seed}"
@@ -47,7 +47,7 @@ def test_oracle_on_50_generated_episodes_and_eval_salt(tmp_path: Path,
                     else:
                         index.check(json.load(handle))
     assert seen_types == {"duplicate_invoice", "payment_misallocation", "fx_rate_error", "cutoff_error"}
-    monkeypatch.setenv("AUDITGYM_SALT", "second-test-salt")
+    monkeypatch.setenv("FINTRACE_SALT", "second-test-salt")
     replay = generator.generate_episode(90049, config, tmp_path / "salted")
     salted = (replay / "open/manifest.json").read_bytes()
     assert json.loads(salted)["episode_id"] != episode_id

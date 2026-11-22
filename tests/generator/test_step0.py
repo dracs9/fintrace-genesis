@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import yaml
 
-from auditgym.episode.serialize import generate_fixture as generate_episode
+from fintrace.episode.serialize import generate_fixture as generate_episode
 
 
 _CONFIGS = Path(__file__).resolve().parents[2] / "configs"
@@ -201,7 +201,7 @@ class StepZeroTests(unittest.TestCase):
         self.assertEqual(provenance["stream_keys"], [])
 
     def test_example_for_team_matches_generator(self) -> None:
-        with patch.dict("os.environ", {"AUDITGYM_SALT": ""}):
+        with patch.dict("os.environ", {"FINTRACE_SALT": ""}):
             fresh = generate_episode(42, self.config, self.root / "fresh")
         example = Path(__file__).parent / "fixtures/step0"
         self.assertEqual(_sha256_tree(fresh), _sha256_tree(example))
@@ -215,7 +215,7 @@ class StepZeroTests(unittest.TestCase):
     def test_replay_sha256_and_episode_identity(self) -> None:
         first = self.root / "first"
         first.mkdir()
-        with patch.dict("os.environ", {"AUDITGYM_SALT": "private-test-salt"}):
+        with patch.dict("os.environ", {"FINTRACE_SALT": "private-test-salt"}):
             generate_episode(42, self.config, first)
             original = _sha256_tree(first)
             reordered = {k: self.config[k] for k in sorted(self.config, reverse=True)}
@@ -239,7 +239,7 @@ class StepZeroTests(unittest.TestCase):
             other_manifest = _read_json(other_config / "open/manifest.json")
             self.assertTrue(other_manifest["period_end"].startswith("2024-02-29T"))
             self.assertTrue(_read_json(other_config / "open/invoices.jsonl")["issued_at"].startswith("2024-02-"))
-        with patch.dict("os.environ", {"AUDITGYM_SALT": ""}):
+        with patch.dict("os.environ", {"FINTRACE_SALT": ""}):
             other_salt = generate_episode(42, self.config, self.root / "other-salt")
         for path in (other_seed, other_config, other_salt):
             self.assertNotEqual(_read_json(path / "open/manifest.json")["episode_id"], manifest["episode_id"])

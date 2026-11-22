@@ -258,7 +258,7 @@ function benchmark() {
   $("bench-note").textContent = chosen.length
     ? chosen.length +
       " completed measurements for this episode. Repeated measurements are averaged per policy."
-    : "Run all four policies on the selected seed and preset, or generate CLI summaries with auditgym all.";
+    : "Run all four policies on the selected seed and preset, or generate CLI summaries with fintrace all.";
 }
 
 async function refresh() {

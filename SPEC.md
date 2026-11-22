@@ -1,4 +1,4 @@
-# AuditGym — техническая спецификация (v1.0)
+# FinTrace — техническая спецификация (v1.0)
 
 > Единственный источник правды для людей и ИИ-агентов (Codex, Claude Code).
 > Если код расходится со SPEC.md — прав SPEC.md. Изменения спецификации — только через PR с пометкой `spec:` и согласие всей команды.
@@ -7,7 +7,7 @@
 
 ## 0. Суть
 
-AuditGym — воспроизводимая RL-среда для ИИ-аудитора (кейс GENESIS 2026 FinTech).
+FinTrace — воспроизводимая RL-среда для ИИ-аудитора (кейс GENESIS 2026 FinTech).
 
 1. **Генератор** по `seed + config` создаёт вымышленную компанию за один отчётный период: проводки, счета, платежи, курсы валют. В данные внедряются 0–12 ошибок четырёх типов. Правильные ответы пишутся в закрытые файлы.
 2. **Среда** (`reset/step`, JSON-контракт в стиле Gymnasium) даёт агенту узкий набор инструментов только для чтения.
@@ -46,7 +46,7 @@ AuditGym — воспроизводимая RL-среда для ИИ-аудит
 ## 2. Структура репозитория
 
 ```
-auditgym/
+fintrace/
 ├── SPEC.md  AGENTS.md  CLAUDE.md  README.md  DESIGN.md  LICENSE
 ├── pyproject.toml  uv.lock  Makefile  Dockerfile  .github/workflows/ci.yml
 ├── configs/
@@ -57,7 +57,7 @@ auditgym/
 │   ├── invoice.schema.json   payment.schema.json fx_row.schema.json
 │   ├── action.schema.json    observation.schema.json
 │   ├── findings.schema.json  truth.schema.json   trajectory.schema.json
-├── src/auditgym/
+├── src/fintrace/
 │   ├── common/        # ОБЩЕЕ — правки только по согласованию
 │   │   ├── types.py   # dataclasses: TruthItem, Mutation, GradeResult, Episode
 │   │   ├── rng.py     # SeedSequence, именованные подпотоки
@@ -301,7 +301,7 @@ def stream(name: str) -> np.random.Generator:
 ```
 
 - Подпотоки: `world`, `events`, `docs`, `ids`, `shuffle`, `distract`, `inj.<type>`, `inter.<name>`. Включение или выключение одного инжектора не меняет данные других подпотоков.
-- `salt = os.environ.get("AUDITGYM_SALT", "")`. В открытых данных соль пустая. Жюри может задать свою, тогда перебор seed по публичному генератору становится бесполезен.
+- `salt = os.environ.get("FINTRACE_SALT", "")`. В открытых данных соль пустая. Жюри может задать свою, тогда перебор seed по публичному генератору становится бесполезен.
 - **Требование R1:** одинаковые `seed + config + version + salt` дают побайтово одинаковые файлы (sha256 каталога).
 - **Требование R2:** одинаковые эпизод и последовательность действий дают одинаковые наблюдения и награды.
 
@@ -616,7 +616,7 @@ class Policy(Protocol):
 | `flag_all` | Читает первые страницы, сдаёт 30 выводов всех типов на увиденные документы | ≈ −0.6…−1 |
 | `reconciler` | Читает все страницы в пределах бюджета. Ищет дубли по точному номеру и сумме, сравнивает `invoice_refs` с Кт 1200, сверяет курс по `issued_at[:10]` (наивно, без учёта TZ), проверяет период по `timestamp`. Специально наивен | заметно между ними |
 
-Адаптер для внешних политик: `auditgym run --policy pkg.module:Class`.
+Адаптер для внешних политик: `fintrace run --policy pkg.module:Class`.
 
 ---
 
@@ -679,7 +679,7 @@ def transform(src: Path, dst: Path, *, permute_seed: int, id_salt: str) -> dict[
 | `tests/leakage` | Рекурсивный скан obs/info/ошибок всех политик на 50 эпизодах: нет `issue_id`, `iss_`, `inject`, `truth`, `private`, `provenance`, seed, путей ФС; сообщения UNKNOWN_ID одинаковы для существующего-удалённого и выдуманного ID |
 | `tests/metamorphic` | M1–M4 |
 | `tests/validate` | Валидатор на всех `data/train` и `data/dev`, плюс на 100 свежих seed |
-| `tests/e2e` | `auditgym all` на маленьком конфиге < 120 с |
+| `tests/e2e` | `fintrace all` на маленьком конфиге < 120 с |
 
 CI: `uv run pytest -q` и `docker build` на каждый PR.
 
@@ -688,20 +688,20 @@ CI: `uv run pytest -q` и `docker build` на каждый PR.
 ## 15. CLI, Make, Docker
 
 ```
-auditgym generate --split train|dev --n 10 --config medium --out data/
-auditgym run --policy oracle|random|flag_all|reconciler|pkg.mod:Class --split dev [--mode eval]
-auditgym validate --data data/
-auditgym transform --src data/dev/ep_00 --dst /tmp/ep_00_t --permute-seed 7 --id-salt x
-auditgym report --runs runs/ --out reports/baselines.md
-auditgym all        # generate → validate → pytest → 4 политики → report
+fintrace generate --split train|dev --n 10 --config medium --out data/
+fintrace run --policy oracle|random|flag_all|reconciler|pkg.mod:Class --split dev [--mode eval]
+fintrace validate --data data/
+fintrace transform --src data/dev/ep_00 --dst /tmp/ep_00_t --permute-seed 7 --id-salt x
+fintrace report --runs runs/ --out reports/baselines.md
+fintrace all        # generate → validate → pytest → 4 политики → report
 ```
 
 Seed-пространства: train `10_000–10_009`, dev `20_000–20_009`, собственные проверки `90_000+`.
 
 ```makefile
-all:      ; uv run auditgym all
+all:      ; uv run fintrace all
 test:     ; uv run pytest -q
-docker:   ; docker build -t auditgym . && docker run --rm --network none --cpus 2 --memory 4g auditgym all
+docker:   ; docker build -t fintrace . && docker run --rm --network none --cpus 2 --memory 4g fintrace all
 ```
 
 ```dockerfile
@@ -711,7 +711,7 @@ RUN pip install --no-cache-dir uv==<закрепить> && useradd -m agent && u
 WORKDIR /app
 COPY . .
 RUN uv sync --frozen --no-dev || uv sync --frozen
-ENTRYPOINT ["uv", "run", "auditgym"]
+ENTRYPOINT ["uv", "run", "fintrace"]
 CMD ["all"]
 ```
 

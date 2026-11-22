@@ -10,10 +10,10 @@ from typing import Any
 
 import pytest
 
-from auditgym.env.core import ensure_episode, load_config
-from auditgym.cli import run_cached_episodes
-from auditgym.grader.leakage import LeakIndex
-from auditgym.web_server import server
+from fintrace.env.core import ensure_episode, load_config
+from fintrace.cli import run_cached_episodes
+from fintrace.grader.leakage import LeakIndex
+from fintrace.web_server import server
 
 Json = dict[str, Any]
 CONFIG = {"seed": 20000, "config": "medium"}

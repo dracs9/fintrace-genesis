@@ -1,7 +1,7 @@
 import unittest
 from decimal import Decimal, ROUND_UP, localcontext
 
-from auditgym.common.money import convert, exponent, parse_rate
+from fintrace.common.money import convert, exponent, parse_rate
 
 
 class MoneyTests(unittest.TestCase):

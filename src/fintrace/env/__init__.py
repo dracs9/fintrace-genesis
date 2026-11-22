@@ -1,4 +1,4 @@
-"""Role 2: AuditGym environment (SPEC §8)."""
+"""Role 2: FinTrace environment (SPEC §8)."""
 
 from .core import AuditEnv
 

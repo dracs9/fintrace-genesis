@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from env_helpers import TINY, FakeGraderClient  # noqa: E402
 
-from auditgym.env import AuditEnv  # noqa: E402
+from fintrace.env import AuditEnv  # noqa: E402
 
 
 @pytest.fixture

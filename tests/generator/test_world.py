@@ -3,7 +3,7 @@ from datetime import date
 
 from numpy.random import Generator, PCG64
 
-from auditgym.world import build
+from fintrace.world import build
 from test_step0 import _preset
 
 

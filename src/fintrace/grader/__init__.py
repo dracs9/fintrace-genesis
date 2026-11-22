@@ -1,4 +1,4 @@
-"""AuditGym evaluator API for the trusted runner and environment."""
+"""FinTrace evaluator API for the trusted runner and environment."""
 
 from .client import GraderClient
 from .result import GradeResult

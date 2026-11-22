@@ -1,16 +1,16 @@
-"""Integration gates that become runnable when Role 2 supplies auditgym.env.core."""
+"""Integration gates that become runnable when Role 2 supplies fintrace.env.core."""
 
 from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
 
-from auditgym.grader import GraderClient
+from fintrace.grader import GraderClient
 
 
 @pytest.fixture
 def environment(tmp_path: Path) -> Iterator[Any]:
-    core = pytest.importorskip("auditgym.env.core", reason="requires the Role 2 environment",
+    core = pytest.importorskip("fintrace.env.core", reason="requires the Role 2 environment",
                                exc_type=ModuleNotFoundError)
     with GraderClient(tmp_path, log_dir=tmp_path / "logs") as client:
         env = core.AuditEnv(data_root=tmp_path, mode="train", grader=client)

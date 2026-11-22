@@ -47,7 +47,7 @@ def _public_values(directory: Path) -> set[str | int]:
     return values
 
 
-_MARKER = re.compile(r"issue_id|iss_|inject|truth|private|provenance|seed|auditgym_salt", re.I)
+_MARKER = re.compile(r"issue_id|iss_|inject|truth|private|provenance|seed|fintrace_salt", re.I)
 _PATH = re.compile(r"(?:[a-z]:[\\/]|\\\\|(?:^|[\s(=\x22'])/(?:[\w.-]+)|"
                    r"(?:^|[\s(=\x22'])\.\.?[\\/][\w.-]+)", re.I)
 _RELATIVE = re.compile(r"(?:^|[\s(=\x22'])[a-z_][\w.-]*[\\/][\w.-]+", re.I)
@@ -71,7 +71,7 @@ class LeakIndex:
         private = {value for data in (truth, provenance) for value in _strings(data)
                    if value and value not in public}
         private.update(row["issue_id"] for row in truth["issues"])
-        if salt := os.environ.get("AUDITGYM_SALT"):
+        if salt := os.environ.get("FINTRACE_SALT"):
             private.add(salt)
         pattern = "|".join(re.escape(value) for value in sorted(private, key=lambda s: (-len(s), s)))
         return cls(re.compile(pattern) if pattern else None, seed, frozenset(public))

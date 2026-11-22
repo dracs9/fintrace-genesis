@@ -11,16 +11,16 @@ gymnasium = pytest.importorskip("gymnasium")
 from gymnasium.utils.env_checker import check_env  # noqa: E402
 
 from env_helpers import FakeGraderClient  # noqa: E402
-from auditgym.env.gym_adapter import AuditGymEnv  # noqa: E402
+from fintrace.env.gym_adapter import FinTraceEnv  # noqa: E402
 
 
 def test_check_env(tmp_path: Path) -> None:
-    env = AuditGymEnv(tmp_path, config="easy", grader=FakeGraderClient())
+    env = FinTraceEnv(tmp_path, config="easy", grader=FakeGraderClient())
     check_env(env, skip_render_check=True)
 
 
 def test_json_round_trip_and_spaces(tmp_path: Path) -> None:
-    env = AuditGymEnv(tmp_path, config="easy", grader=FakeGraderClient())
+    env = FinTraceEnv(tmp_path, config="easy", grader=FakeGraderClient())
     obs, info = env.reset(seed=90_020)
     assert env.observation_space.contains(obs)
     episode_id = json.loads(obs)["result"]["manifest"]["episode_id"]
@@ -35,6 +35,6 @@ def test_json_round_trip_and_spaces(tmp_path: Path) -> None:
 
 
 def test_same_seed_same_observation(tmp_path: Path) -> None:
-    env = AuditGymEnv(tmp_path)
+    env = FinTraceEnv(tmp_path)
     assert env.reset(seed=5)[0] == env.reset(seed=5)[0]
     assert env.reset(seed=5)[0] != env.reset(seed=6)[0]

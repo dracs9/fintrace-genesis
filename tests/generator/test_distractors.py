@@ -5,10 +5,10 @@ from fractions import Fraction
 
 from numpy.random import Generator, PCG64
 
-from auditgym.books import check_invariants, post
-from auditgym.injectors.distractors import apply, prepare
-from auditgym.world import Entity, build
-from auditgym.world.events import Events, generate_events
+from fintrace.books import check_invariants, post
+from fintrace.injectors.distractors import apply, prepare
+from fintrace.world import Entity, build
+from fintrace.world.events import Events, generate_events
 from test_step0 import _preset
 
 

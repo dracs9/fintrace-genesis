@@ -10,8 +10,8 @@ from zlib import crc32
 
 from numpy.random import Generator, PCG64, SeedSequence
 
-from auditgym.common.rng import Streams
-from auditgym.episode.serialize import generate_episode
+from fintrace.common.rng import Streams
+from fintrace.episode.serialize import generate_episode
 from test_step0 import _preset, _read_json, _sha256_tree
 
 

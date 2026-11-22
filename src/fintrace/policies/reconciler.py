@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TypeAlias, cast
 
-from auditgym.common.money import convert, parse_rate
+from fintrace.common.money import convert, parse_rate
 
 from ._pages import PagePolicy
 from .base import Record, finding

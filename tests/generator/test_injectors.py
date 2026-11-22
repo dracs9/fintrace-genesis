@@ -32,7 +32,8 @@ class InjectorTests(unittest.TestCase):
         sale2 = Invoice(1, 0, "USD", at + timedelta(days=3), at + timedelta(days=30), 200000)
         p = Payment(0, 0, "USD", at + timedelta(days=4), 149900,
                     (Allocation(0, 50000), Allocation(1, 100000)), 100)
-        self.books = post(self.world, Events((self.sale, sale2), (p,)))
+        single = Payment(1, 0, "USD", at + timedelta(days=4), 31000, (Allocation(0, 31000),))
+        self.books = post(self.world, Events((self.sale, sale2), (p, single)))
         self.plugins = registry(BUILTINS)
 
     def test_duplicate_identity_and_two_independent_evidence_sets(self) -> None:
@@ -61,8 +62,10 @@ class InjectorTests(unittest.TestCase):
     def test_all_diversions_preserve_remittance_and_balance(self) -> None:
         plugin = self.plugins["payment_misallocation"]
         candidates = plugin.eligible(self.books)
-        self.assertEqual(len(candidates), 4)
+        self.assertEqual({c.variant for c in candidates}, {"full", "partial"})
+        self.assertEqual(len(candidates), 2)
         for c in candidates:
+            self.assertEqual(c.document.key, 1)
             m = plugin.apply(c, self.books, rng(3))
             t, = m.truth_items
             rows = lines(m.books, c.document)

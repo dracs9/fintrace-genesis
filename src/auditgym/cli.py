@@ -13,9 +13,10 @@ import os
 import subprocess
 import sys
 import time
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Literal, Sequence
 
 from .env.core import AuditEnv, ensure_episode, load_config
 from .logging.trajectory import EpisodeSummary, TrajectoryWriter, write_summary
@@ -71,7 +72,16 @@ def load_policy(spec: str) -> Any:
             cls = _resolve(spec)
         except NotImplementedYet:
             raise ValueError(f"cannot import policy {spec}") from None
-        return cls()
+        if not isinstance(cls, type):
+            raise ValueError("invalid arguments")
+        policy = cls()
+        if not isinstance(getattr(policy, "name", None), str) or not all(
+            callable(getattr(policy, method, None)) for method in ("act", "reset")
+        ):
+            raise ValueError("invalid arguments")
+        return policy
+    if spec == "random_explorer":
+        spec = "random"
     if spec not in POLICIES:
         raise ValueError(f"unknown policy {spec}")
     try:
@@ -120,11 +130,17 @@ def run_policy_episode(env: AuditEnv, policy: Any, seed: int, config: dict | str
                        writer: TrajectoryWriter, grader: _RecordingGrader | None) -> EpisodeSummary:
     """Run one episode to termination/truncation, logging every step (SPEC §11)."""
     started = time.perf_counter()
+    obs, info = env.reset(seed, config)
+    return _run_observation(env, policy, writer, grader, obs, info, started)
+
+
+def _run_observation(env: AuditEnv, policy: Any, writer: TrajectoryWriter,
+                     grader: _RecordingGrader | None, obs: dict, info: dict,
+                     started: float) -> EpisodeSummary:
     if grader is not None:
         grader.last = None
-    obs, info = env.reset(seed, config)
     writer.begin(info, obs)
-    policy.reset(obs, seed=seed)
+    policy.reset(obs, seed=0)  # Public exploration seed, independent of episode generation.
     step = 0
     while True:
         action = policy.act(obs)
@@ -159,30 +175,55 @@ def cmd_generate(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     data_root = Path(args.data) / args.split
-    policy = load_policy(args.policy)
-    name = str(getattr(policy, "name", args.policy)).replace(":", "_").replace("/", "_")
-    run_dir = Path(args.runs) / (args.run_id or f"{name}-{args.split}-{args.mode}")
-    real = make_grader(data_root)
-    grader = None if real is None else _RecordingGrader(real)
-    try:
-        drop_agent_privileges()  # after the grader worker is started, before any policy step
-    except BaseException:
-        if real is not None:
-            real.close()
-        raise
-    env = AuditEnv(data_root, mode=args.mode, grader=grader, max_steps=args.max_steps)
-    rows = []
-    try:
-        with TrajectoryWriter(run_dir / "trajectories.jsonl", name) as writer:
-            for seed in _seeds(args.split, args.n):
-                rows.append(run_policy_episode(env, policy, seed, args.config, writer, grader))
-    finally:
-        env.close()
-        if real is not None and callable(getattr(real, "close", None)):
-            real.close()
-    write_summary(run_dir / "summary.jsonl", rows)
+    config = load_config(args.config)
+    paths = [ensure_episode(data_root, seed, config) for seed in _seeds(args.split, args.n)]
+    run_dir = run_cached_episodes(
+        data_root, paths, args.policy, Path(args.runs), split=args.split, mode=args.mode,
+        max_steps=args.max_steps, run_id=args.run_id,
+    )
     print(run_dir.as_posix())
     return 0
+
+
+def run_cached_episodes(data_root: Path, paths: Sequence[Path], policy_spec: str,
+                        runs: Path, *, split: str, mode: Literal["train", "eval"] = "train",
+                        max_steps: int = 100, run_id: str | None = None) -> Path:
+    """Run a policy on prepared episodes, recording observations and independent grader results.
+
+    In a worker configured for UID separation this call drops privileges irreversibly.
+    Only the built-in oracle receives the separate trusted capability.
+    """
+    if not 1 <= max_steps <= 100:
+        raise ValueError("max_steps must be between 1 and 100")
+    with ExitStack() as stack:
+        real = make_grader(data_root)
+        if real is not None:
+            stack.callback(real.close)
+        recording = _RecordingGrader(real) if real is not None and mode == "train" else None
+        channel = None
+        if policy_spec == "oracle":
+            from .policies.oracle import OracleChannel, OraclePolicy
+            channel = stack.enter_context(OracleChannel(data_root, run_as=os.getenv(GRADER_USER_ENV) or None))
+        drop_agent_privileges()
+        salt = os.environ.pop("AUDITGYM_SALT", None)
+        if salt is not None:
+            stack.callback(os.environ.__setitem__, "AUDITGYM_SALT", salt)
+        policy = OraclePolicy(channel) if channel is not None else load_policy(policy_spec)
+        name = str(getattr(policy, "name", policy_spec))
+        slug = name.replace(":", "_").replace("/", "_")
+        run_dir = runs / (run_id or f"{slug}-{split}-{mode}")
+        env = AuditEnv(data_root, mode=mode, grader=recording or real, max_steps=max_steps)
+        stack.callback(env.close)
+        writer = stack.enter_context(TrajectoryWriter(run_dir / "trajectories.jsonl", name))
+        rows = []
+        for path in paths:
+            started = time.perf_counter()
+            obs, info = env.reset_from_dir(path)
+            if path.name != info["episode_id"]:
+                raise ValueError("invalid arguments")
+            rows.append(_run_observation(env, policy, writer, recording, obs, info, started))
+        write_summary(run_dir / "summary.jsonl", rows)
+    return run_dir
 
 
 def _call_entry(name: str, *call_args: Any, **kwargs: Any) -> int:
@@ -202,7 +243,7 @@ def cmd_transform(args: argparse.Namespace) -> int:
 
 
 def cmd_report(args: argparse.Namespace) -> int:
-    return _call_entry("report", Path(args.runs), Path(args.out))
+    return _call_entry("report", Path(args.runs), Path(args.out), Path(args.data))
 
 
 def cmd_all(args: argparse.Namespace) -> int:
@@ -231,26 +272,31 @@ def cmd_all(args: argparse.Namespace) -> int:
     if not args.skip_tests:
         if not stage("pytest", lambda: subprocess.call([sys.executable, "-m", "pytest", "-q"])):
             return 1
-    for policy in POLICIES:
+    for policy in sorted(POLICIES):
         if not stage(f"run {policy}", lambda p=policy: _run_subprocess(p, args)):
             return 1
     if not stage("report", lambda: cmd_report(argparse.Namespace(runs=args.runs,
-                                                                  out="reports/baselines.md"))):
+                                                                  out="reports/baselines.md",
+                                                                  data=args.data))):
         return 1
     print("all: done" + (f" (skipped: {', '.join(skipped)})" if skipped else ""))
     return 0
 
 
 def _run_subprocess(policy: str, args: argparse.Namespace) -> int:
-    """Run one policy on dev in a child ``auditgym run``.
+    """Run one policy on both splits with separate child processes.
 
     Each run drops privileges irreversibly, so ``all`` keeps its own UID and starts a fresh
     process per policy. A policy that is not implemented yet is detected here and skipped.
     """
     load_policy(policy)
-    return subprocess.call([sys.executable, "-m", "auditgym.cli", "run", "--policy", policy,
-                            "--split", "dev", "--mode", "train", "--config", str(args.config),
-                            "--n", str(args.n), "--data", str(args.data), "--runs", str(args.runs)])
+    for split in sorted(SPLITS):
+        code = subprocess.call([sys.executable, "-m", "auditgym.cli", "run", "--policy", policy,
+                                "--split", split, "--mode", "train", "--config", str(args.config),
+                                "--n", str(args.n), "--data", str(args.data), "--runs", str(args.runs)])
+        if code:
+            return code
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -291,6 +337,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("report", help="baseline report from runs")
     p.add_argument("--runs", default="runs")
     p.add_argument("--out", default="reports/baselines.md")
+    p.add_argument("--data", default="data")
     p.set_defaults(func=cmd_report)
 
     p = sub.add_parser("all", help="generate -> validate -> pytest -> policies -> report")

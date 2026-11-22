@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import time
@@ -16,7 +17,16 @@ def test_all_small_config_under_120s(tmp_path: Path) -> None:
     )
     elapsed = time.perf_counter() - started
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert "all: done" in proc.stdout
+    assert proc.stdout.splitlines()[-1] == "all: done"
     assert elapsed < 120
     assert len(list((tmp_path / "data" / "train").iterdir())) == 2
     assert len(list((tmp_path / "data" / "dev").iterdir())) == 2
+
+    report = json.loads((tmp_path / "reports/validation.json").read_bytes())
+    assert report["valid"] and report["checked"] == 4
+    for split in ("train", "dev"):
+        for policy in ("oracle", "reconciler", "random_explorer", "flag_all"):
+            rows = (tmp_path / "runs" / f"{policy}-{split}-train" / "summary.jsonl").read_text()
+            assert len(rows.splitlines()) == 2
+    assert (tmp_path / "reports/baselines.md").is_file()
+    assert (tmp_path / "reports/failure_analysis.md").is_file()

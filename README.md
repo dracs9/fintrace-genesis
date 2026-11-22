@@ -24,7 +24,7 @@ GPU, интернет и платные API не нужны.
 ## 2. Установка
 
 ```shell
-git clone <адрес репозитория>
+git clone https://github.com/sanzhartulepbaev/genesis-hackaton.git
 cd genesis-hackaton
 uv sync
 ```
@@ -45,7 +45,7 @@ uv run auditgym all
 uv run auditgym all --config easy --n 2 --skip-tests
 ```
 
-В конце должно появиться `all: done`. Этапы, которые ещё не реализованы, выводятся как `skipped` (см. раздел 9).
+После `all: done` доступны траектории и сводки для четырёх политик на train и dev. Результат проверки данных записан в `reports/validation.json`.
 
 ---
 
@@ -57,13 +57,13 @@ uv run auditgym all --config easy --n 2 --skip-tests
 | `uv run auditgym run --policy <политика> --split dev` | Прогоняет политику на эпизодах, пишет результаты в `runs/` |
 | `uv run auditgym validate --data data/` | Независимая проверка сгенерированных данных |
 | `uv run auditgym transform --src ... --dst ... --permute-seed 7 --id-salt x` | Перемешивает строки и переименовывает ID эпизода (метаморфные проверки) |
-| `uv run auditgym report --runs runs/` | Строит `reports/baselines.md` |
+| `uv run auditgym report --runs runs/ --data data/` | Пересчитывает результаты из траекторий и обновляет отчёты |
 | `uv run auditgym all` | Всё по порядку |
 
 Полезные параметры:
 - `--split train|dev` выбирает набор эпизодов: `train` использует seed 10000–10009, `dev` — seed 20000–20009.
 - `--config easy|medium|hard|default` задаёт сложность, настройки лежат в [configs/](configs/).
-- `--mode eval` в `run` запускает режим проверки: агент всегда получает награду 0, а настоящая награда пишется только в лог оценщика `logs/grader.jsonl`.
+- `--mode eval` в `run` запускает режим проверки: агент всегда получает награду 0, публичная сводка оставляет метрики пустыми, а настоящая награда пишется в лог оценщика `logs/grader.jsonl`.
 
 Справка по любой команде: `uv run auditgym <команда> --help`.
 
@@ -102,19 +102,21 @@ data/dev/ep_3f9a1c27b6d0/
 
 ## 6. Как подключить свою политику (агента)
 
-Политика — это класс с двумя методами:
+Политика — класс с атрибутом `name`, конструктором без обязательных аргументов и двумя методами.
 
 ```python
-# my_agent.py
+from typing import Any
+
+
 class MyAgent:
     name = "my_agent"
 
-    def reset(self, first_obs: dict, *, seed: int) -> None:
+    def reset(self, first_obs: dict[str, Any], *, seed: int) -> None:
         """Вызывается в начале эпизода. first_obs содержит manifest, policy и список инструментов."""
         self.episode_id = first_obs["result"]["manifest"]["episode_id"]
         self.step = 0
 
-    def act(self, obs: dict) -> dict:
+    def act(self, obs: dict[str, Any]) -> dict[str, Any]:
         """Получает последнее наблюдение и возвращает следующее действие."""
         self.step += 1
         if self.step == 1:
@@ -125,7 +127,7 @@ class MyAgent:
         }}}
 ```
 
-Запуск из папки, где лежит `my_agent.py`:
+Сохраните пример как `my_agent.py` в корне репозитория. CLI передаёт в `reset` публичный seed политики. Во время запуска модуль видит открытое наблюдение, а `act` возвращает один вызов инструмента.
 
 ```shell
 uv run auditgym run --policy my_agent:MyAgent --split dev --n 10
@@ -134,23 +136,6 @@ uv run auditgym run --policy my_agent:MyAgent --split dev --n 10
 Результаты:
 - `runs/<имя>/trajectories.jsonl` — каждый шаг: действие, наблюдение, награда;
 - `runs/<имя>/summary.jsonl` — итог по каждому эпизоду: precision, recall, F1, награда, число шагов.
-
-Можно работать и напрямую из Python, без CLI:
-
-```python
-from pathlib import Path
-from auditgym.env.core import AuditEnv
-from auditgym.grader import GraderClient
-
-if __name__ == "__main__":            # обязательно на Windows: оценщик запускается в отдельном процессе
-    data = Path("data/dev")
-    with GraderClient(data) as grader:
-        env = AuditEnv(data, mode="train", grader=grader)
-        obs, info = env.reset(20000, "medium")
-        obs, reward, terminated, truncated, info = env.step(
-            {"tool": "list_records", "args": {"table": "ledger"}})
-        ...
-```
 
 Есть и обёртка под Gymnasium: [src/auditgym/env/gym_adapter.py](src/auditgym/env/gym_adapter.py).
 
@@ -186,17 +171,23 @@ ID в находках пишутся с префиксом: `doc:D-…` для 
 
 ### Награда
 
-```
-reward = 2·F1 − 1 − 0.002 · (число шагов до submit)
+```text
+reward = clip(2 × F1 − 1 − 0.002 × inspection_steps, −1, 1)
 ```
 
-- Все ошибки найдены, ложных нет — награда почти 1.
-- Ничего не найдено, хотя ошибки есть, — −1.
-- В чистом эпизоде без ошибок лучший ответ — пустой список. Ложное обвинение даёт −1.
-- Ответ, нарушающий формат, даёт −1.
-- Каждый лишний шаг немного снижает награду.
+Примеры ниже используют 10 инспекций. Один повтор правильной находки образует один FP. Для FX допуск по сумме составляет ±1 минимальную единицу включительно. [Тесты награды и атак](tests/attacks/README.md)
 
-Как система реагирует на попытки её обмануть, видно в [tests/attacks/README.md](tests/attacks/README.md).
+| Ответ или попытка обойти оценку | Условия | Награда |
+|---|---|---:|
+| Полный ответ | Вся ошибка доказана | 0,980 |
+| Пустой ответ | Чистая книга | 0,980 |
+| Пустой ответ | В книге есть ошибка | −1,000 |
+| Повтор правильной находки | 1 ошибка, 1 TP и 1 FP | 0,313 |
+| Массовая подача | 2 ошибки, 2 TP и 28 FP | −0,770 |
+| Угаданные ID, неполное доказательство, неверная валюта или сумма за допуском | 1 ошибка, 0 TP | −1,000 |
+| Невалидный JSON-пакет находок | Любой эпизод | −1,000 |
+| Тайм-аут без сдачи | Чистая книга, 100 инспекций | 0,800 |
+
 
 ---
 
@@ -206,15 +197,16 @@ reward = 2·F1 − 1 − 0.002 · (число шагов до submit)
 uv run pytest -q
 ```
 
-Полный прогон занимает около 4 минут. Отдельные наборы:
+Отдельные наборы можно запускать по ролям.
 
 ```shell
 uv run pytest -q tests/env          # среда
 uv run pytest -q tests/generator    # генератор
 uv run pytest -q tests/grader tests/attacks tests/leakage   # оценщик, атаки, утечки
+uv run pytest -q tests/validate tests/metamorphic tests/e2e  # интеграция
 ```
 
-> **Windows:** если `uv run pytest` пишет `uv trampoline failed to canonicalize script path`, используйте `uv run python -m pytest -q`.
+> Если на macOS два теста изоляции реагируют на системный путь `/private/var/…`, задайте отдельный каталог: `mkdir -p "$HOME/.cache/auditgym-tmp"` и `TMPDIR="$HOME/.cache/auditgym-tmp" uv run pytest -q`. На Windows при ошибке uv trampoline используйте `uv run python -m pytest -q`.
 
 ---
 
@@ -230,7 +222,7 @@ make docker
 - оценщик работает под пользователем `grader` и только он может читать `private/`;
 - среда и политика работают под `agent`.
 
-Даже если код агента попробует открыть файлы с ответами, операционная система ему не даст.
+Права POSIX в контейнере ограничивают чтение ключа отдельно от Python-конвенций. При локальном запуске под одним UID подключайте только доверенный код политик.
 
 Другие цели Makefile: `make test` (тесты), `make all` (конвейер без Docker), `make docker-build` (только сборка).
 
@@ -246,13 +238,38 @@ make docker
 | `src/auditgym/validate/`, `policies/`, `episode/transform.py`, `reports/` | Валидатор, базовые политики, отчёты | 4 Интегратор |
 | `src/auditgym/common/`, `SPEC.md` | Общий код и спецификация, правки только по согласованию | Все |
 
-**Текущий статус.** Готовы генератор, среда, оценщик и Docker. Ещё не реализованы (роль 4): независимый валидатор, `transform`, базовые политики `oracle`/`random`/`flag_all`/`reconciler` и отчёты. Пока их нет, `auditgym all` пропускает эти этапы с пометкой `skipped`, а свою политику уже можно запускать через `--policy модуль:Класс`.
+## 10. Демо на 2–3 минуты
+
+1. **0:00–0:45.** Из корня репозитория запустите быстрый конвейер. Покажите число проверенных эпизодов и сводки наград.
+
+   ```shell
+   uv run auditgym all --config medium --n 3 --skip-tests --data runs/demo-data --runs runs/demo
+   ```
+
+2. **0:45–1:30.** В `runs/demo/oracle-dev-train/trajectories.jsonl` покажите стартовое наблюдение, чтение по ID и терминальный `submit`. Сравните со сводкой `runs/demo/flag_all-dev-train/summary.jsonl` и разберите, какое доказательство нужно для одного TP.
+3. **1:30–2:15.** Покажите автоматическую проверку перестановки и переименования. M2 сохраняет награду oracle, M3 сохраняет P/R/F1 reconciler, M4 повторно оценивает исходный ответ с новыми ID.
+
+   ```shell
+   uv run pytest -q tests/metamorphic/test_invariance.py -k 90000
+   ```
+
+4. **2:15–2:45.** Сравните корректную пограничную операцию с `fx_partial_boundary`. Проверьте, где дата меняется при переводе в +05:00 и почему reconciler пропускает обе ошибки. [Разбор ошибок](reports/failure_analysis.md)
+
+## 11. Воспроизведение измерений
+
+Команда запускает все четыре политики на medium с seed 10000–10009, 20000–20009 и 90000–90019. Она сохраняет сводки и траектории, а затем формирует оба отчёта.
+
+```shell
+uv run python -m auditgym.validate.report --data data --runs runs/benchmark --out reports/baselines.md
+```
+
+`auditgym all` и демо пересобирают текущие отчёты в `reports/` по своим выборкам. Команда выше восстанавливает отчёт по 40 эпизодам. Версия генератора 1.0.1 меняет ID эпизодов. Используйте каталог с эпизодами текущей версии при сравнении результатов. [Базовые политики](reports/baselines.md) · [Устройство среды](DESIGN.md)
 
 ---
 
-## 10. Частые вопросы
+## 12. Частые вопросы
 
-**Почему повторный запуск даёт те же данные?** Вся случайность выводится из `seed`, поэтому одинаковый `seed` и конфиг дают побайтово одинаковые файлы. Чтобы данные нельзя было заранее подобрать перебором seed, задайте секретную соль: `AUDITGYM_SALT=... uv run auditgym generate ...`.
+**Почему повторный запуск даёт те же данные?** Вся случайность выводится из `seed`, поэтому одинаковые `seed`, конфиг, версия и соль дают побайтово одинаковые файлы. Чтобы данные нельзя было заранее подобрать перебором seed, задайте секретную соль: `AUDITGYM_SALT=... uv run auditgym generate ...`.
 
 **Куда пишутся логи оценщика?** В `logs/grader.jsonl`. Агенту этот файл недоступен.
 

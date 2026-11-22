@@ -15,8 +15,10 @@ class PaymentMisallocation:
         """Find independently evidenced full and partial diversions of remittances."""
         result = []
         for p in books.events.payments:
-            if p.unapplied_minor:
-                continue  # The evidence row must represent only the unexplained diversion.
+            # A 2150 posting has no invoice_id. The remittance must independently
+            # identify the affected invoice and rule out a genuine unapplied balance.
+            if p.unapplied_minor or len({ref.invoice for ref in p.refs}) != 1:
+                continue
             for index, row in enumerate(lines(books, p)):
                 if row.account == "1200" and any(r.invoice == row.invoice for r in p.refs):
                     result.append(Candidate(p, "full", index))

@@ -201,7 +201,7 @@ def _ids(count: int, prefix: str, width: int, rng: Generator, *, numeric: bool =
 
 def generate_episode(seed: int, config: dict[str, Any], out_dir: Path) -> Path:
     """Generate deterministic public records and private, ID-resolved truth and provenance."""
-    version = "1.0.0"
+    version = "1.0.1"
     config_hash = hashlib.sha256(_json_bytes(config)).hexdigest()
     salt = os.environ.get("AUDITGYM_SALT", "")
     source = Streams(seed, config_hash, version, salt)

@@ -28,7 +28,7 @@ import yaml
 from .errors import EnvError
 from .tools import READ_TOOLS, EpisodeData, validate_action
 
-GENERATOR_VERSION = "1.0.0"  # must match episode/serialize.py; verified against manifest in reset
+GENERATOR_VERSION = "1.0.1"  # must match episode/serialize.py; verified against manifest in reset
 FINDING_TYPES = ("duplicate_invoice", "payment_misallocation", "fx_rate_error", "cutoff_error")
 TOOL_NAMES = ("list_records", "get_record", "get_document", "calculator", "submit")
 GRADE_FIELDS = ("tp", "fp", "fn", "precision", "recall", "f1", "reward", "valid")

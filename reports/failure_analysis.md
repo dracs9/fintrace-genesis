@@ -1,13 +1,13 @@
 # Где ошибается reconciler
 
-Выборка содержит 40 эпизодов. Каждая пропущенная ошибка — FN, каждая несопоставленная находка — FP. Знаменатель для доли пропусков — число ошибок в эталоне, для доли ложных находок — число поданных находок этого типа.
+Выборка содержит 20 эпизодов. Каждая пропущенная ошибка — FN, каждая несопоставленная находка — FP. Знаменатель для доли пропусков — число ошибок в эталоне, для доли ложных находок — число поданных находок этого типа.
 
 | Тип | TP | FN / ошибок | FP / находок | Пример FN | Пример FP |
 |---|---:|---|---|---|---|
-| duplicate_invoice | 0 | 19/19 | 0/0 | `ep_00b9b7c6214e`, `ep_0328accfedc7` | — |
-| payment_misallocation | 26 | 1/27 | 73/99 | `ep_33a71f128003` | `ep_0328accfedc7`, `ep_0ccfabf9bf3d` |
-| fx_rate_error | 6 | 16/22 | 336/342 | `ep_00b9b7c6214e`, `ep_0328accfedc7` | `ep_0328accfedc7`, `ep_0ccfabf9bf3d` |
-| cutoff_error | 12 | 8/20 | 107/119 | `ep_00b9b7c6214e`, `ep_0328accfedc7` | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
+| duplicate_invoice | 0 | 8/8 | 0/0 | `ep_159325eeb4b4`, `ep_28975deb8c11` | — |
+| payment_misallocation | 13 | 1/14 | 33/46 | `ep_33a71f128003` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| fx_rate_error | 2 | 5/7 | 169/171 | `ep_28975deb8c11`, `ep_32805b4f52d4` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| cutoff_error | 5 | 4/9 | 51/56 | `ep_32805b4f52d4`, `ep_33a71f128003` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
 
 ## Сочетания
 
@@ -15,8 +15,8 @@
 
 | Сценарий | Случаев | Оба | Один | Ни одного | Неполных / всего | Пример неполного |
 |---|---:|---:|---:|---:|---|---|
-| fx_partial_boundary | 7 | 0 | 0 | 7 | 7/7 | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| duplicate_with_payment | 5 | 0 | 5 | 0 | 5/5 | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
+| fx_partial_boundary | 3 | 0 | 0 | 3 | 3/3 | `ep_32805b4f52d4`, `ep_736d23e03e59` |
+| duplicate_with_payment | 1 | 0 | 1 | 0 | 1/1 | `ep_b66ca5160da7` |
 
 ## Корректные отвлекающие случаи
 
@@ -24,15 +24,15 @@
 
 | Ловушка | Затронуто / размечено | Доля | Пример FP | Пример случая |
 |---|---:|---:|---|---|
-| recurring_subscription | 32/286 | 11.2% | `ep_0e7cf9165920`, `ep_159325eeb4b4` | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| split_payment | 2/40 | 5.0% | `ep_33a71f128003`, `ep_d21e2ab1e637` | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| multi_invoice_payment | 1/40 | 2.5% | `ep_159325eeb4b4` | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| partial_open | 1/40 | 2.5% | `ep_c5fc04f499c5` | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| overpayment | 23/302 | 7.6% | `ep_0ccfabf9bf3d`, `ep_159325eeb4b4` | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| bank_fee | 0/40 | 0.0% | — | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| credit_note | 0/40 | 0.0% | — | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| boundary_correct | 40/40 | 100.0% | `ep_00b9b7c6214e`, `ep_0328accfedc7` | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
-| exotic_exponent | 5/30 | 16.7% | `ep_33a71f128003`, `ep_736d23e03e59` | `ep_00b9b7c6214e`, `ep_0328accfedc7` |
+| recurring_subscription | 19/146 | 13.0% | `ep_159325eeb4b4`, `ep_28975deb8c11` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| split_payment | 1/20 | 5.0% | `ep_33a71f128003` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| multi_invoice_payment | 1/20 | 5.0% | `ep_159325eeb4b4` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| partial_open | 0/20 | 0.0% | — | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| overpayment | 13/144 | 9.0% | `ep_159325eeb4b4`, `ep_28975deb8c11` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| bank_fee | 0/20 | 0.0% | — | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| credit_note | 0/20 | 0.0% | — | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| boundary_correct | 20/20 | 100.0% | `ep_159325eeb4b4`, `ep_28975deb8c11` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
+| exotic_exponent | 3/15 | 20.0% | `ep_33a71f128003`, `ep_736d23e03e59` | `ep_159325eeb4b4`, `ep_28975deb8c11` |
 
 ## Объяснение ошибок
 
